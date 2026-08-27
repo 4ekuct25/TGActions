@@ -53,20 +53,24 @@ def read_index(relpath):
 
 
 def load_map(read):
-    """Список (export_name, slug) с проверкой, что карта покрывает корень."""
+    """Список сценариев {export, slug, layout} с проверкой покрытия корня."""
     entries = json.loads(read("tools/scenarios.json").decode("utf-8"))["scenarios"]
-    mapped = {}
+    scenarios = []
     for e in entries:
         if not (ROOT / e["export"]).is_file():
             raise SystemExit(f"{MAP.name}: нет файла {e['export']}")
-        mapped[e["export"]] = e["slug"]
+        layout = e.get("layout", "file")
+        if layout not in ("file", "modules"):
+            raise SystemExit(f"{MAP.name}: неизвестный layout {layout!r} у {e['slug']}")
+        scenarios.append({"export": e["export"], "slug": e["slug"], "layout": layout})
 
+    mapped = {s["export"] for s in scenarios}
     unmapped = sorted(p.name for p in ROOT.glob("*.json") if p.name not in mapped)
     if unmapped:
         raise SystemExit(
             f"{MAP.name}: сценарии не заведены в карте: {', '.join(unmapped)}"
         )
-    return list(mapped.items())
+    return scenarios
 
 
 def dump_export(obj):
@@ -111,7 +115,35 @@ def split(export_name, slug, read):
     return files
 
 
-def join(export_name, slug, read):
+def assemble_modules(slug, read):
+    """src/<slug>/ -> текст скрипта сценария.
+
+    before-файлы кладутся вне IIFE, modules — внутрь, затем вызывается entry.
+    Файлы вставляются как есть, чтобы номера строк в собранном скрипте
+    сдвигались предсказуемо (на длину предыдущих модулей).
+    """
+    spec = json.loads(read(f"src/{slug}/modules.json").decode("utf-8"))
+
+    def part(name):
+        return read(f"src/{slug}/{name}").decode("utf-8").rstrip("\n")
+
+    out = [part(name) for name in spec["before"]]
+    out.append(
+        f"/* Собрано из src/{slug}/ — правки в этом файле потеряются "
+        f"при следующей сборке (tools/scenarios.py build). */"
+    )
+    out.append(f"var {spec['var']} = (function () {{")
+    for name in spec["modules"]:
+        out.append(f"// ───────────────────────────  {name}  ───────────────────────────")
+        out.append(part(name))
+        out.append("")
+    out.append(f"return {spec['entry']}();")
+    out.append("})();")
+    out.extend(part(name) for name in spec["after"])
+    return "\n".join(out) + "\n"
+
+
+def join(export_name, slug, read, layout="file"):
     """src/ -> байты экспорта (с сохранением всех полей, кроме data)."""
     export = json.loads(read(export_name).decode("utf-8"))
     template = export["scenarioTemplate"]
@@ -119,7 +151,9 @@ def join(export_name, slug, read):
     def src(name):
         return read(f"src/{name}").decode("utf-8")
 
-    if template["type"] != "BLOCK":
+    if layout == "modules":
+        template["data"] = assemble_modules(slug, read)
+    elif template["type"] != "BLOCK":
         template["data"] = src(f"{slug}.js")
     else:
         graph = json.loads(src(f"{slug}.blocks.json"))
@@ -138,11 +172,24 @@ def join(export_name, slug, read):
 def cmd_extract(_args):
     SRC.mkdir(exist_ok=True)
     written = []
-    for export_name, slug in load_map(read_worktree):
-        for name, blob in split(export_name, slug, read_worktree).items():
+    skipped = []
+    for s in load_map(read_worktree):
+        if s["layout"] == "modules":
+            # Обратное разложение экспорта по модулям не автоматизируется:
+            # хаб отдаёт собранный скрипт одним куском. Перенос правок,
+            # сделанных в хабе, в src/<slug>/ — ручная работа.
+            skipped.append(s["export"])
+            continue
+        for name, blob in split(s["export"], s["slug"], read_worktree).items():
             (SRC / name).write_bytes(blob)
             written.append(name)
     print(f"извлечено в src/: {', '.join(sorted(written))}")
+    if skipped:
+        print(
+            "ПРОПУЩЕНО (layout=modules, разложить по модулям вручную): "
+            + ", ".join(skipped),
+            file=sys.stderr,
+        )
     return 0
 
 
@@ -151,13 +198,13 @@ def cmd_build(args):
     where = "индексе" if read is read_index else "рабочем дереве"
 
     changed = []
-    for export_name, slug in load_map(read):
-        built = join(export_name, slug, read)
-        if built == read(export_name):
+    for s in load_map(read):
+        built = join(s["export"], s["slug"], read, s["layout"])
+        if built == read(s["export"]):
             continue
-        changed.append(export_name)
+        changed.append(s["export"])
         if not args.check:
-            (ROOT / export_name).write_bytes(built)
+            (ROOT / s["export"]).write_bytes(built)
 
     if args.check:
         if changed:

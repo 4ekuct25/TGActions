@@ -586,14 +586,45 @@ global.TGActions.sendInteractiveMessage(
 |---|---|
 | `01-logger.js` | Logger |
 | `02-settings.js` | Telegram for Sprut. Part 1. ReadMe and Settings |
-| `03-engine.js` | Telegram for Sprut. Part 2. Engine |
+| `03-engine/` | Telegram for Sprut. Part 2. Engine (разложен на модули, см. 15.1) |
 | `04-autostart.blocks.json` + `04-autostart.code.1.js` | Telegram for Sprut. Part 3. Auto start bot (блочный: граф блоков отдельно, код блока отдельно) |
 
 В `04-autostart.blocks.json` поле `code` содержит ссылку `@file:04-autostart.code.1.js`;
 при сборке она подставляется содержимым файла.
 
 Соответствие «экспорт ↔ имя в `src/`» задано в `tools/scenarios.json`. Новый сценарий
-нужно завести там, иначе `extract`/`build` откажутся работать.
+нужно завести там, иначе `extract`/`build` откажутся работать. Поле `layout` там же
+различает одиночный файл (`file`) и каталог модулей (`modules`).
+
+### 15.1. Модули движка (`src/03-engine/`)
+
+Движок собирается из модулей: каждый файл — самостоятельная фабрика
+`function TGActionsXxx(ns) { … return {…}; }`, зависимости объявлены явно в
+первых строках тела. Сборщик кладёт все фабрики внутрь одной IIFE и вызывает
+`TGActionsIndex()`, так что наружу по-прежнему торчит только `var TGActions`
+с публичным API — внутренние имена в глобальную область не утекают.
+
+| Модуль | Отвечает за | Зависит от |
+|---|---|---|
+| `constants.js` | версия, константы Telegram Bot API | — |
+| `logger.js` | обёртка над `global.LoggerFactory` | — |
+| `state.js` | контейнеры состояния опроса, whitelist чатов | — |
+| `helpers.js` | `getBot`, `getChat`, сборка URL, таймеры | logger, constants |
+| `messaging.js` | отправка/удаление сообщений, клавиатуры | logger, constants, helpers, state |
+| `bot-meta.js` | описание бота в Telegram | logger, constants, helpers |
+| `commands.js` | регистрация команд | logger, helpers, state, botMeta |
+| `handlers.js` | callback-кнопки, команды, reply-кнопки | logger, helpers, state, messaging |
+| `updates.js` | разбор пачки updates | state, handlers |
+| `polling.js` | жизненный цикл long-polling, 503/409, back-off | logger, constants, helpers, state, commands, updates |
+| `index.js` | сборка ns и публичный API | все |
+
+Порядок создания модулей задан в `index.js` и повторяет таблицу сверху вниз —
+менять его нельзя, модуль получает `ns` уже заполненным своими зависимостями.
+`banner.js` и `examples.js` — комментарии, они кладутся вне IIFE.
+Порядок склейки описан в `src/03-engine/modules.json`.
+
+Собранный `3. …Engine.json` — артефакт: править его руками бессмысленно,
+`build` перезапишет.
 
 **Цикл работы**
 
@@ -607,6 +638,28 @@ python3 tools/scenarios.py build
 # сверка без записи, exit 1 при расхождении
 python3 tools/scenarios.py check
 ```
+
+> `extract` не трогает сценарии с `layout: modules` и говорит об этом: хаб отдаёт
+> движок одним куском, обратно по модулям он не раскладывается. Если движок
+> правили прямо в хабе — переносить правки в `src/03-engine/` придётся руками.
+
+**Проверка движка вне хаба**
+
+```bash
+# прогнать движок через заглушки хаба и напечатать трассу
+# (HTTP-вызовы, лог, таймеры, срабатывания обработчиков)
+node tools/engine-harness.js <путь-к-собранному-скрипту>
+
+# проверить, что у стенда есть зубы: внести по дефекту в каждый модуль
+# и убедиться, что трасса меняется
+python3 tools/mutation-check.py
+```
+
+Стенд полезен как A/B: снять трассу до правки и после, они должны совпасть,
+если правка задумана как рефакторинг без смены поведения. Одна ветка стендом
+принципиально не покрывается — защита от повторного входа в `pollOnce`
+(`inFlight`): в стенде HTTP синхронный и поток один. Она перечислена в
+`tools/mutation-check.py` как осознанная слепая зона.
 
 **Pre-commit хук**
 

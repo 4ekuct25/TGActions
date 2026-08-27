@@ -1,0 +1,24 @@
+{
+  "_comment": "Сборка сценария из модулей. before/after кладутся вне IIFE, modules — внутрь, затем вызывается entry. Порядок в modules определяет только читаемость собранного файла; порядок инициализации задан в index.js.",
+  "var": "TGActions",
+  "entry": "TGActionsIndex",
+  "before": [
+    "banner.js"
+  ],
+  "modules": [
+    "constants.js",
+    "logger.js",
+    "state.js",
+    "helpers.js",
+    "messaging.js",
+    "bot-meta.js",
+    "commands.js",
+    "handlers.js",
+    "updates.js",
+    "polling.js",
+    "index.js"
+  ],
+  "after": [
+    "examples.js"
+  ]
+}
