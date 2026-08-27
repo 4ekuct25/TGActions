@@ -574,3 +574,45 @@ global.TGActions.sendInteractiveMessage(
 
 #v0.5.2#03.07.25
 Первая альфа-версия
+
+---
+
+## 15. Разработка (структура репозитория)
+
+Код сценариев живёт в `src/` — это **источник правды**. Корневые `*.json` —
+экспорты для импорта в Sprut.hub, они **генерируются** из `src/`.
+
+| Файл в `src/` | Сценарий |
+|---|---|
+| `01-logger.js` | Logger |
+| `02-settings.js` | Telegram for Sprut. Part 1. ReadMe and Settings |
+| `03-engine.js` | Telegram for Sprut. Part 2. Engine |
+| `04-autostart.blocks.json` + `04-autostart.code.1.js` | Telegram for Sprut. Part 3. Auto start bot (блочный: граф блоков отдельно, код блока отдельно) |
+
+В `04-autostart.blocks.json` поле `code` содержит ссылку `@file:04-autostart.code.1.js`;
+при сборке она подставляется содержимым файла.
+
+Соответствие «экспорт ↔ имя в `src/`» задано в `tools/scenarios.json`. Новый сценарий
+нужно завести там, иначе `extract`/`build` откажутся работать.
+
+**Цикл работы**
+
+```bash
+# после экспорта сценариев из хаба — обновить src/
+python3 tools/scenarios.py extract
+
+# после правки кода в src/ — пересобрать экспорты
+python3 tools/scenarios.py build
+
+# сверка без записи (годится как гейт перед коммитом), exit 1 при расхождении
+python3 tools/scenarios.py check
+```
+
+**Правила**
+
+* Корневые `*.json` вручную не править — правка потеряется при следующем `build`.
+  Правим `src/`, затем `build`.
+* Перед коммитом прогонять `check`: он ловит ситуацию «код поменяли в `src/`,
+  а экспорт не пересобрали» (и наоборот).
+* Сборка байт-в-байт: в GLOBAL-сценариях переводы строк — CRLF, нормализация EOL
+  ломает round-trip. Это закреплено в `.gitattributes`, снимать нельзя.

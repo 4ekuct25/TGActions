@@ -1,0 +1,16 @@
+{
+  "targets": [
+    {
+      "type": "delay",
+      "index": 1,
+      "time": 120000,
+      "mode": "RESET",
+      "targets": [
+        {
+          "type": "code",
+          "code": "@file:04-autostart.code.1.js"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "_comment": "Соответствие «экспорт сценария Sprut.hub» ↔ «имя в src/». Используется tools/scenarios.py. При добавлении нового сценария в корень репозитория его нужно завести здесь, иначе extract/build упадут с ошибкой.",
+  "scenarios": [
+    {
+      "export": "1. Logger.json",
+      "slug": "01-logger"
+    },
+    {
+      "export": "2. Telegram for Sprut. Part 1. ReadMe and Settings (2).json",
+      "slug": "02-settings"
+    },
+    {
+      "export": "3. Telegram for Sprut. Part 2. Engine.json",
+      "slug": "03-engine"
+    },
+    {
+      "export": "4. Telegram for Sprut. Part 3. Auto start bot.json",
+      "slug": "04-autostart"
+    }
+  ]
+}
