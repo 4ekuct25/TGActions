@@ -1,0 +1,10 @@
+#!/bin/sh
+# Гейт: экспорты сценариев в индексе должны соответствовать src/.
+# Ловит коммит, где правку кода застейджили, а пересобранный *.json — нет.
+#
+# Включается через versioned hooks:
+#   git config core.hooksPath tools/hooks
+#
+# Разовый обход (осознанно, например коммит только доков при заведомом
+# рассинхроне): git commit --no-verify
+exec python3 "$(git rev-parse --show-toplevel)/tools/scenarios.py" check --index

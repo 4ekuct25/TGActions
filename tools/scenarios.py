@@ -4,19 +4,25 @@
 Источник правды — каталог src/. Корневые *.json — генерируемый артефакт,
 который импортируется в хаб. Правки кода делаются в src/, затем `build`.
 
-    tools/scenarios.py extract   # *.json -> src/   (после экспорта из хаба)
-    tools/scenarios.py build     # src/   -> *.json (перед импортом в хаб)
-    tools/scenarios.py check     # сверка без записи, ненулевой код при расхождении
+    tools/scenarios.py extract        # *.json -> src/   (после экспорта из хаба)
+    tools/scenarios.py build          # src/   -> *.json (перед импортом в хаб)
+    tools/scenarios.py check          # сверка без записи, ненулевой код при расхождении
+    tools/scenarios.py check --index  # то же, но по содержимому индекса (pre-commit)
 
 Сборка байт-в-байт: экспорты сериализуются как
 json.dumps(obj, ensure_ascii=False, indent=2) без завершающего перевода строки,
 вложенный граф BLOCK-сценария — компактно, separators=(',', ':').
 Переводы строк внутри кода (в GLOBAL-сценариях это CRLF) сохраняются как есть,
 поэтому src/*.js читаются и пишутся в бинарном режиме.
+
+Про --index: коммит фиксирует индекс, а не рабочее дерево. Сверка рабочего дерева
+пропустила бы коммит, где правка src/ застейджена, а пересобранный экспорт — нет.
+В этом режиме всё содержимое читается через `git show :<путь>`.
 """
 
 import argparse
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -27,13 +33,31 @@ MAP = Path(__file__).resolve().parent / "scenarios.json"
 CODE_REF = "@file:"
 
 
-def load_map():
-    """Список (export_path, slug) с проверкой, что карта покрывает корень."""
-    entries = json.loads(MAP.read_text(encoding="utf-8"))["scenarios"]
+def read_worktree(relpath):
+    path = ROOT / relpath
+    if not path.is_file():
+        raise SystemExit(f"нет файла {relpath} — запустите `tools/scenarios.py extract`")
+    return path.read_bytes()
+
+
+def read_index(relpath):
+    done = subprocess.run(
+        ["git", "show", f":{relpath}"], cwd=ROOT, capture_output=True
+    )
+    if done.returncode != 0:
+        raise SystemExit(
+            f"{relpath}: нет в индексе — файл не отслеживается или не застейджен "
+            f"(`git add {relpath}`)"
+        )
+    return done.stdout
+
+
+def load_map(read):
+    """Список (export_name, slug) с проверкой, что карта покрывает корень."""
+    entries = json.loads(read("tools/scenarios.json").decode("utf-8"))["scenarios"]
     mapped = {}
     for e in entries:
-        path = ROOT / e["export"]
-        if not path.is_file():
+        if not (ROOT / e["export"]).is_file():
             raise SystemExit(f"{MAP.name}: нет файла {e['export']}")
         mapped[e["export"]] = e["slug"]
 
@@ -42,7 +66,7 @@ def load_map():
         raise SystemExit(
             f"{MAP.name}: сценарии не заведены в карте: {', '.join(unmapped)}"
         )
-    return [(ROOT / name, slug) for name, slug in mapped.items()]
+    return list(mapped.items())
 
 
 def dump_export(obj):
@@ -67,9 +91,9 @@ def code_nodes(graph):
     return found
 
 
-def split(export_path, slug):
-    """Экспорт -> {относительный путь в src: bytes}."""
-    template = json.loads(export_path.read_text(encoding="utf-8"))["scenarioTemplate"]
+def split(export_name, slug, read):
+    """Экспорт -> {имя файла в src/: bytes}."""
+    template = json.loads(read(export_name).decode("utf-8"))["scenarioTemplate"]
     data = template["data"]
 
     if template["type"] != "BLOCK":
@@ -87,39 +111,35 @@ def split(export_path, slug):
     return files
 
 
-def join(export_path, slug):
+def join(export_name, slug, read):
     """src/ -> байты экспорта (с сохранением всех полей, кроме data)."""
-    export = json.loads(export_path.read_text(encoding="utf-8"))
+    export = json.loads(read(export_name).decode("utf-8"))
     template = export["scenarioTemplate"]
 
+    def src(name):
+        return read(f"src/{name}").decode("utf-8")
+
     if template["type"] != "BLOCK":
-        template["data"] = read_src(f"{slug}.js")
+        template["data"] = src(f"{slug}.js")
     else:
-        graph = json.loads(read_src(f"{slug}.blocks.json"))
+        graph = json.loads(src(f"{slug}.blocks.json"))
         for node in code_nodes(graph):
             ref = node["code"]
             if not ref.startswith(CODE_REF):
                 raise SystemExit(
                     f"{slug}.blocks.json: ожидалась ссылка «{CODE_REF}…», а не код: {ref[:40]!r}"
                 )
-            node["code"] = read_src(ref[len(CODE_REF):])
+            node["code"] = src(ref[len(CODE_REF):])
         template["data"] = json.dumps(graph, ensure_ascii=False, separators=(",", ":"))
 
     return dump_export(export)
 
 
-def read_src(name):
-    path = SRC / name
-    if not path.is_file():
-        raise SystemExit(f"нет файла src/{name} — запустите `tools/scenarios.py extract`")
-    return path.read_bytes().decode("utf-8")
-
-
 def cmd_extract(_args):
     SRC.mkdir(exist_ok=True)
     written = []
-    for export_path, slug in load_map():
-        for name, blob in split(export_path, slug).items():
+    for export_name, slug in load_map(read_worktree):
+        for name, blob in split(export_name, slug, read_worktree).items():
             (SRC / name).write_bytes(blob)
             written.append(name)
     print(f"извлечено в src/: {', '.join(sorted(written))}")
@@ -127,20 +147,30 @@ def cmd_extract(_args):
 
 
 def cmd_build(args):
+    read = read_index if getattr(args, "index", False) else read_worktree
+    where = "индексе" if read is read_index else "рабочем дереве"
+
     changed = []
-    for export_path, slug in load_map():
-        built = join(export_path, slug)
-        if built == export_path.read_bytes():
+    for export_name, slug in load_map(read):
+        built = join(export_name, slug, read)
+        if built == read(export_name):
             continue
-        changed.append(export_path.name)
+        changed.append(export_name)
         if not args.check:
-            export_path.write_bytes(built)
+            (ROOT / export_name).write_bytes(built)
 
     if args.check:
         if changed:
-            print("расходятся с src/: " + ", ".join(changed), file=sys.stderr)
+            print(
+                f"в {where} экспорты расходятся с src/: " + ", ".join(changed),
+                file=sys.stderr,
+            )
+            print(
+                "пересоберите и застейджите: python3 tools/scenarios.py build",
+                file=sys.stderr,
+            )
             return 1
-        print("все экспорты соответствуют src/")
+        print(f"все экспорты в {where} соответствуют src/")
         return 0
 
     print("обновлено: " + (", ".join(changed) if changed else "нечего — всё совпадает"))
@@ -156,9 +186,13 @@ def main():
     sub.add_parser("build", help="src/ -> *.json").set_defaults(
         func=cmd_build, check=False
     )
-    sub.add_parser("check", help="сверить *.json с src/ без записи").set_defaults(
-        func=cmd_build, check=True
+    check = sub.add_parser("check", help="сверить *.json с src/ без записи")
+    check.add_argument(
+        "--index",
+        action="store_true",
+        help="сверять содержимое индекса, а не рабочего дерева (режим pre-commit)",
     )
+    check.set_defaults(func=cmd_build, check=True)
     args = parser.parse_args()
     return args.func(args)
 
