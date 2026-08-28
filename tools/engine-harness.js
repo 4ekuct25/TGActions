@@ -62,7 +62,10 @@ const settings = {
     },
     botCommands: {
         help: { description: 'помощь', handler: mark('cmd:help') },
-        status: { description: 'статус', handler: mark('cmd:status') }
+        status: { description: 'статус', handler: mark('cmd:status') },
+        // Команда, отвечающая из любого чата: на ней держится начальная
+        // настройка — узнать chat_id группы, которой ещё нет в белом списке.
+        who: { description: 'кто я', anyChat: true, handler: mark('cmd:who') }
     }
 };
 
@@ -146,6 +149,11 @@ function updatesBatch() {
             // Текста нет ни в одной кнопке — ветка «ничего не совпало».
             { update_id: 111, message: { chat: { id: 111 }, text: 'просто текст' } },
             { update_id: 12, message: { chat: { id: 999 }, text: 'чужой чат' } },
+            // Из чужого чата: обычная команда должна быть отброшена,
+            // а anyChat-команда — обработана. Без обеих строк правка
+            // «/who из любого чата» стендом не проверяется.
+            { update_id: 120, message: { chat: { id: 999 }, from: SENDER, text: '/status@MyHomeBot' } },
+            { update_id: 121, message: { chat: { id: 999 }, from: SENDER, text: '/who@MyHomeBot' } },
             {
                 update_id: 13,
                 callback_query: {

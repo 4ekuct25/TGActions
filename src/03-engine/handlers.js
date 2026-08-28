@@ -64,16 +64,24 @@ function TGActionsHandlers(ns) {
         if (!msg || !msg.text) {
             return;
         }
-        if (!_isAllowedChat(msg.chat.id)) {
+
+        var text = msg.text.trim();
+        var isCommand = text.charAt(0) === '/';
+        var parts = isCommand ? text.split(' ') : null;
+        var cmdName = isCommand ? normalizeCommand(parts[0]) : null;
+        var cmd = isCommand ? global.TGActionsSettings.botCommands[cmdName] : null;
+
+        // Команда с anyChat: true отвечает из ЛЮБОГО чата, в том числе ещё не
+        // внесённого в белый список. Без этого /who недоступна ровно там, где
+        // она нужна: узнать chat_id новой группы, пока группы нет в списке.
+        // Всё остальное из чужого чата по-прежнему молча отбрасывается.
+        if (!_isAllowedChat(msg.chat.id) && !(cmd && cmd.anyChat)) {
             _logger.warn('Message from unauthorized chat {} ignored', msg.chat.id);
             return;
         }
-        var text = msg.text.trim();
-        if (text.charAt(0) === '/') {
-            var parts = text.split(' ');
-            var cmdName = normalizeCommand(parts[0]);
+
+        if (isCommand) {
             var params = parts.slice(1);
-            var cmd = global.TGActionsSettings.botCommands[cmdName];
             if (!cmd || typeof cmd.handler !== 'function') {
                 _logger.warn('Unknown command {}', cmdName);
                 return;

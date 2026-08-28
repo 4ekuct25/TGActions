@@ -93,6 +93,12 @@ function TGActionsCommands(ns) {
 
         who: {
             description: 'Кто я для бота',
+            // Отвечает из любого чата, даже не внесённого в белый список:
+            // иначе не узнать chat_id новой группы — она в списке появится
+            // только ПОСЛЕ того, как станет известен её id.
+            // Наружу отдаются только собственные идентификаторы спросившего,
+            // ничего о доме. После настройки строку можно убрать.
+            anyChat: true,
             handler: function (ctx) {
                 var profile = access.profileByChat(ctx.chatId);
                 var user = access.users[String(ctx.userId)];

@@ -94,6 +94,10 @@ MUTATIONS = [
     ("commands.js", "if (commandsRegistered[botName]) {", "if (false) {"),
     # Без botName обработчик кнопки не может ответить в тот же чат.
     ("handlers.js", "cq.botName = botName;", "cq.botName = null;"),
+    # Без anyChat команда /who недоступна в ещё не настроенной группе —
+    # то есть ровно там, где она нужна.
+    ("handlers.js", "if (!_isAllowedChat(msg.chat.id) && !(cmd && cmd.anyChat)) {",
+     "if (!_isAllowedChat(msg.chat.id)) {"),
     ("updates.js", "pollOffsets[botName] = maxId + 1;", "pollOffsets[botName] = maxId;"),
     (
         "logger.js",
