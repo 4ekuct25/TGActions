@@ -38,6 +38,11 @@ SETTINGS_MUTATIONS = [
      "точечное скрытие устройства не работает"),
     ("discovery.js", "return Hub.getCharacteristicValue(item.aId, item.cId);",
      "return null;", "чтение значений сломано"),
+    # Подстановка секретов из local.js: без неё бот молчит во всех чатах.
+    ("access.js", "profiles[i].chatId = local.chats[profiles[i].key];",
+     "profiles[i].chatId = profiles[i].chatId;", "chatId из local.js не подставляется"),
+    ("access.js", "users = local.users;", "users = users;",
+     "белый список из local.js не подставляется"),
 ]
 
 # (файл, что заменить, на что[, причина-почему-заведомо-не-ловится])

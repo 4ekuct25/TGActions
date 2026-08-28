@@ -126,27 +126,31 @@ vm.runInContext(code, sandbox, { filename: 'settings.js' });
 settings = sandbox.TGActionsSettings;
 sandbox.global.TGActionsSettings = settings;
 
-// Подставляем в профили тестовые чаты и людей: в репозитории лежат плейсхолдеры.
-const access = settings._diag && settings._diag.inventory ? null : null;
-const profiles = sandbox.TGActionsSettings.chats;
-
 // ────────────────────────  Приведение конфига к тестовому  ──────────────────
-// Профили и белый список живут внутри замыкания сценария, снаружи их не
-// достать. Поэтому стенд правит их через тот же путь, что и хаб: пересобирает
-// сценарий с подставленными значениями.
+// Идём ровно тем же путём, что и рабочая сборка для хаба: подмешиваем модуль
+// TGActionsLocal. Раньше стенд подменял значения текстовым поиском по коду —
+// это проверяло не тот механизм, которым пользуются в бою.
 function rebuildWith(config) {
-    const patched = code
-        .replace("chatId: 'Заполнить',\n            rooms: ['Гостиная'", `chatId: '${config.family}',\n            rooms: ['Гостиная'`)
-        .replace("chatId: 'Заполнить',\n            rooms: ['*']", `chatId: '${config.private}',\n            rooms: ['*']`)
-        .replace("'Заполнить': { name: 'Хозяин', critical: true }",
-            `'${config.owner}': { name: 'Хозяин', critical: true },\n        '${config.kid}': { name: 'Ребёнок', critical: false }`);
+    const local = `function TGActionsLocal() {
+        return {
+            botKey: 'TEST-TOKEN',
+            chats: { f: '${config.family}', p: '${config.private}' },
+            users: {
+                '${config.owner}': { name: 'Хозяин', critical: true },
+                '${config.kid}': { name: 'Ребёнок', critical: false }
+            }
+        };
+    }\n`;
+    // local.js в сборке идёт первым модулем — внутри той же IIFE.
+    const patched = code.replace(
+        /(var TGActionsSettings = \(function \(\) \{\n)/, `$1${local}`);
     if (patched === code) {
-        throw new Error('не удалось подставить тестовый конфиг — изменился текст access.js');
+        throw new Error('не удалось подмешать TGActionsLocal — изменилась обёртка сборки');
     }
     const box = Object.assign({}, sandbox);
     vm.createContext(box);
     box.global = { LoggerFactory: sandbox.global.LoggerFactory, TGActions };
-    vm.runInContext(patched, box, { filename: 'settings.patched.js' });
+    vm.runInContext(patched, box, { filename: 'settings.local.js' });
     box.global.TGActionsSettings = box.TGActionsSettings;
     return box.TGActionsSettings;
 }
@@ -320,6 +324,10 @@ function must(title, ok) {
 }
 say('=== Структурные проверки ===');
 must('обход прошёл без ошибок', diag.inventory.errors.length === 0);
+// Если бы local.js не подмешался, чаты остались бы плейсхолдерами и
+// все проверки доступа проходили бы «отказом» по ложной причине.
+must('local.js подставил id чатов',
+    settings.chats.f === FAMILY_CHAT && settings.chats.p === PRIVATE_CHAT);
 must('пустая комната в меню не попала', diag.inventory.rooms.indexOf('Пустая комната') === -1);
 must('служебные типы отфильтрованы',
     !kept.has('Identify') && !kept.has('SetupEndpoints') && !kept.has('SelectedRTPStreamConfiguration'));

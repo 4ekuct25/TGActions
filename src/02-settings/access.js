@@ -5,9 +5,14 @@
  * Ссылаемся на комнаты по ИМЕНАМ, а не по числовым id: при перепаривании
  * устройства id в хабе меняется, имя комнаты — нет.
  *
- * Зависимостей нет.
+ * Здесь лежит СТРУКТУРА политики, но не сами id: chatId и белый список людей
+ * подставляются из неотслеживаемого local.js (см. local.example.js).
+ * Репозиторий публичный, поэтому в отслеживаемых файлах только плейсхолдеры.
+ *
+ * Зависимости: local (может отсутствовать — тогда останутся плейсхолдеры).
  */
-function TGActionsAccess() {
+function TGActionsAccess(ns) {
+    var local = ns && ns.local ? ns.local : null;
 
     // ─────────────────────────────  Профили чатов  ─────────────────────────
     // key       — короткий идентификатор, попадает в имена наборов кнопок
@@ -41,6 +46,22 @@ function TGActionsAccess() {
 
     // Автор не из списка: 'ignore' — молча не реагировать, 'deny' — ответить отказом.
     var strangerPolicy = 'deny';
+
+    // Подстановка реальных значений из local.js. Профиль без chatId остаётся
+    // с плейсхолдером и просто ни с одним чатом не совпадёт — это безопасный
+    // отказ, а не тихое разрешение.
+    if (local) {
+        if (local.chats) {
+            for (var i = 0; i < profiles.length; i++) {
+                if (local.chats[profiles[i].key]) {
+                    profiles[i].chatId = local.chats[profiles[i].key];
+                }
+            }
+        }
+        if (local.users) {
+            users = local.users;
+        }
+    }
 
     function profileByChat(chatId) {
         var id = String(chatId);

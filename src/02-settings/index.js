@@ -6,8 +6,12 @@
 function TGActionsSettingsIndex() {
     var ns = {};
 
+    // local.js не отслеживается git и в сборку с плейсхолдерами не попадает.
+    // Его отсутствие — рабочее состояние репозитория, а не ошибка.
+    ns.local = (typeof TGActionsLocal === 'function') ? TGActionsLocal() : null;
+
     ns.actions = TGActionsActions();
-    ns.access = TGActionsAccess();
+    ns.access = TGActionsAccess(ns);
     ns.discovery = TGActionsDiscovery(ns);
     ns.menu = TGActionsMenu(ns);
 
@@ -53,7 +57,7 @@ function TGActionsSettingsIndex() {
         bots: {
             _default: 'home',
             home: {
-                key: 'Заполнить',
+                key: ns.local && ns.local.botKey ? ns.local.botKey : 'Заполнить',
                 description: 'Управление умным домом',
                 shortDescription: 'Умный дом',
                 autoStart: true
