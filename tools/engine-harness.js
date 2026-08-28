@@ -76,7 +76,10 @@ function mark(name) {
             // Автор сообщения: без этих полей в трассе проброс msg.from не виден,
             // и A/B показал бы «ничего не изменилось» на изменившемся поведении.
             userId: ctx && ctx.userId !== undefined ? ctx.userId : '(нет поля)',
-            userName: ctx && ctx.userName !== undefined ? ctx.userName : '(нет поля)'
+            userName: ctx && ctx.userName !== undefined ? ctx.userName : '(нет поля)',
+            // Обработчик inline-кнопки раньше не получал имя бота и не мог
+            // ответить в тот же чат. Без записи в трассу правка непокрыта.
+            botName: ctx && ctx.botName !== undefined ? ctx.botName : '(нет поля)'
         });
     };
 }

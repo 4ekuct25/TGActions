@@ -20,6 +20,25 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 MODULES = ROOT / "src" / "03-engine"
 EXPORT = ROOT / "3. Telegram for Sprut. Part 2. Engine.json"
+SETTINGS = ROOT / "src" / "02-settings"
+
+# Мутации сценария настроек. Здесь эталон не трасса, а вердикт
+# tools/settings-harness.js: сломанная политика доступа обязана его завалить.
+# Если мутация проходит зелёной — стенд не проверяет то, ради чего написан.
+SETTINGS_MUTATIONS = [
+    ("access.js", "if (!user) {", "if (false) {",
+     "неизвестный человек допущен"),
+    ("access.js", "if (item.critical && !(profile.allowCritical && user.critical)) {",
+     "if (false) {", "снята проверка критичных действий"),
+    ("access.js", "if (profile.rooms[i] === '*' || profile.rooms[i] === roomName) {",
+     "if (true) {", "комнаты профиля игнорируются"),
+    ("menu.js", "if (item.critical && !profile.allowCritical) {", "if (false) {",
+     "критичное попадает в семейное меню"),
+    ("discovery.js", "if (override.hide) {", "if (false) {",
+     "точечное скрытие устройства не работает"),
+    ("discovery.js", "return Hub.getCharacteristicValue(item.aId, item.cId);",
+     "return null;", "чтение значений сломано"),
+]
 
 # (файл, что заменить, на что[, причина-почему-заведомо-не-ловится])
 #
@@ -56,6 +75,8 @@ MUTATIONS = [
         "return CONSTANTS.API_URL_BASE + '/bot/' + botKey + path;",
     ),
     ("commands.js", "if (commandsRegistered[botName]) {", "if (false) {"),
+    # Без botName обработчик кнопки не может ответить в тот же чат.
+    ("handlers.js", "cq.botName = botName;", "cq.botName = null;"),
     ("updates.js", "pollOffsets[botName] = maxId + 1;", "pollOffsets[botName] = maxId;"),
     (
         "logger.js",
@@ -88,6 +109,49 @@ def build_and_trace(tmp):
     )
     # Падение стенда — тоже наблюдаемое отличие, возвращаем stderr как трассу.
     return done.stdout if done.returncode == 0 else "HARNESS FAILED\n" + done.stderr
+
+
+def settings_harness_passes():
+    """True, если стенд настроек доволен текущей сборкой."""
+    subprocess.run([sys.executable, "tools/scenarios.py", "build"],
+                   cwd=ROOT, check=True, capture_output=True)
+    done = subprocess.run(["node", "tools/settings-harness.js"],
+                          cwd=ROOT, capture_output=True, text=True)
+    return done.returncode == 0
+
+
+def check_settings():
+    """Каждая мутация политики доступа обязана завалить стенд настроек."""
+    print("\n=== сценарий настроек: мутации политики доступа ===")
+    originals = {p.name: p.read_bytes() for p in SETTINGS.glob("*.js")}
+    missed = []
+    try:
+        if not settings_harness_passes():
+            raise SystemExit("стенд настроек не проходит ДО мутаций — чинить надо его")
+        for name, old, new, title in SETTINGS_MUTATIONS:
+            path = SETTINGS / name
+            text = path.read_text(encoding="utf-8")
+            if text.count(old) != 1:
+                raise SystemExit(
+                    f"{name}: паттерн {old!r} встречается {text.count(old)} раз"
+                )
+            path.write_text(text.replace(old, new), encoding="utf-8")
+            try:
+                caught = not settings_harness_passes()
+            finally:
+                path.write_bytes(originals[name])
+            print(f"{'ловится' if caught else 'НЕ ЛОВИТСЯ':>10}  {name:<14} {title}")
+            if not caught:
+                missed.append(f"{name}: {title}")
+    finally:
+        for name, blob in originals.items():
+            (SETTINGS / name).write_bytes(blob)
+        subprocess.run([sys.executable, "tools/scenarios.py", "build"],
+                       cwd=ROOT, check=True, capture_output=True)
+
+    if not settings_harness_passes():
+        raise SystemExit("после восстановления стенд настроек не проходит")
+    return missed
 
 
 def main():
@@ -156,7 +220,15 @@ def main():
 
         covered = len(MUTATIONS) - len(expected_blind)
         print(f"\nтрассу изменили {covered} мутаций из {len(MUTATIONS)}")
-        return 0
+
+    missed = check_settings()
+    if missed:
+        print(f"\nстенд настроек НЕ ловит {len(missed)}:", file=sys.stderr)
+        for m in missed:
+            print("  " + m, file=sys.stderr)
+        return 1
+    print(f"стенд настроек ловит все {len(SETTINGS_MUTATIONS)} мутаций")
+    return 0
 
 
 if __name__ == "__main__":

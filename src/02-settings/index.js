@@ -1,0 +1,68 @@
+/**
+ * Сборка настроек: обход хаба → меню → публичный объект TGActionsSettings.
+ *
+ * Порядок создания = порядок зависимостей, менять нельзя.
+ */
+function TGActionsSettingsIndex() {
+    var ns = {};
+
+    ns.actions = TGActionsActions();
+    ns.access = TGActionsAccess();
+    ns.discovery = TGActionsDiscovery(ns);
+    ns.menu = TGActionsMenu(ns);
+
+    // buttonSets отдаётся движку по ссылке и переполняется на месте при
+    // /refresh: движок читает global.TGActionsSettings.buttonSets в момент
+    // нажатия, поэтому подменять сам объект нельзя — только его содержимое.
+    var buttonSets = {};
+
+    ns.menuState = {
+        inventory: { actions: [], sensors: [], rooms: [], errors: [] },
+        index: { rooms: 0, devices: 0, actions: 0 },
+        refresh: function () {
+            var inventory = ns.discovery.scan();
+            var built = ns.menu.build(inventory);
+
+            for (var old in buttonSets) {
+                if (buttonSets.hasOwnProperty(old)) {
+                    delete buttonSets[old];
+                }
+            }
+            for (var name in built.buttonSets) {
+                if (built.buttonSets.hasOwnProperty(name)) {
+                    buttonSets[name] = built.buttonSets[name];
+                }
+            }
+
+            ns.menuState.inventory = inventory;
+            ns.menuState.index = built.index;
+            return { inventory: inventory, index: built.index };
+        }
+    };
+
+    ns.menuState.refresh();
+
+    // Чаты для движка выводятся из профилей доступа: один источник правды,
+    // иначе белый список чатов и политика доступа разъедутся.
+    var chats = { _default: ns.access.profiles[0].key };
+    for (var i = 0; i < ns.access.profiles.length; i++) {
+        chats[ns.access.profiles[i].key] = ns.access.profiles[i].chatId;
+    }
+
+    return {
+        bots: {
+            _default: 'home',
+            home: {
+                key: 'Заполнить',
+                description: 'Управление умным домом',
+                shortDescription: 'Умный дом',
+                autoStart: true
+            }
+        },
+        chats: chats,
+        replyKeyboardSets: {},
+        buttonSets: buttonSets,
+        botCommands: TGActionsCommands(ns),
+        _diag: ns.menuState
+    };
+}

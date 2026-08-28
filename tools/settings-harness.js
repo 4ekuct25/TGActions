@@ -1,0 +1,353 @@
+/**
+ * Стенд для сценария настроек: обход хаба, политика доступа, меню.
+ *
+ *     node tools/settings-harness.js [<путь-к-собранному-скрипту>]
+ *
+ * Поднимает заглушку Hub по фикстуре tools/fixtures/hub-usadba.json (снята с
+ * живого хаба «Усадьба»), загружает собранный сценарий настроек и прогоняет
+ * сценарий использования: /home, переходы по меню, нажатия действий, попытки
+ * из чужого чата и от неизвестного человека.
+ *
+ * Печатает детерминированную трассу: дерево меню, отправленные сообщения,
+ * фактические записи в устройства. Годится как A/B при правках.
+ *
+ * Что стенд НЕ проверяет: реальный Sprut.Hub. В частности, запись из
+ * глобального сценария напрямую хаб запрещает молча (см. JOURNAL.md) — здесь
+ * запись всегда «проходит».
+ */
+
+'use strict';
+
+const fs = require('fs');
+const path = require('path');
+const vm = require('vm');
+
+const ROOT = path.join(__dirname, '..');
+const EXPORT = path.join(ROOT, '2. Telegram for Sprut. Part 1. ReadMe and Settings (2).json');
+
+const FAMILY_CHAT = '-1001111111111';
+const PRIVATE_CHAT = '235000000';
+const OWNER = '111000111';
+const KID = '222000222';
+const STRANGER = '999000999';
+
+const trace = { menu: [], sent: [], writes: [], errors: [] };
+
+// ─────────────────────────────  Заглушка хаба  ──────────────────────────────
+const fixture = JSON.parse(
+    fs.readFileSync(path.join(__dirname, 'fixtures', 'hub-usadba.json'), 'utf8'));
+
+const values = {};   // 'aId,cId' -> текущее значение
+
+function makeCharacteristic(c, aId, sId, accessory, service) {
+    const key = aId + ',' + c.cId;
+    values[key] = c.value;
+    return {
+        getUUID: () => aId + '.' + sId + '.' + c.cId,
+        getType: () => c.type,
+        getName: () => c.name,
+        getMinValue: () => (c.min === null ? null : c.min),
+        getMaxValue: () => (c.max === null ? null : c.max),
+        getMinStep: () => (c.step === null ? null : c.step),
+        getValue: () => values[key],
+        setValue: (v) => { values[key] = v; },
+        getAccessory: () => accessory,
+        getService: () => service
+    };
+}
+
+const roomObjects = fixture.rooms.map((room) => {
+    const accessories = room.accessories.map((a) => {
+        const accessory = {};
+        const services = a.services.map((s) => {
+            const service = {};
+            const chars = s.characteristics.map(
+                (c) => makeCharacteristic(c, a.aId, s.sId, accessory, service));
+            Object.assign(service, {
+                getName: () => s.name,
+                getType: () => s.type,
+                isVisible: () => s.visible !== false,
+                getCharacteristics: () => chars,
+                getAccessory: () => accessory
+            });
+            return service;
+        });
+        Object.assign(accessory, {
+            getName: () => a.name,
+            getServices: (visible) => (visible ? services.filter((s) => s.isVisible()) : services)
+        });
+        return accessory;
+    });
+    return { getName: () => room.name, getAccessories: () => accessories };
+});
+
+const Hub = {
+    getRooms: () => roomObjects,
+    getAccessories: () => roomObjects.reduce((acc, r) => acc.concat(r.getAccessories()), []),
+    getCharacteristicValue: (aId, cId) => {
+        const key = aId + ',' + cId;
+        if (!(key in values)) throw new Error('нет характеристики ' + key);
+        return values[key];
+    },
+    setCharacteristicValue: (aId, cId, v) => {
+        const key = aId + ',' + cId;
+        if (!(key in values)) throw new Error('нет характеристики ' + key);
+        values[key] = v;
+        trace.writes.push({ addr: key, value: v });
+    }
+};
+
+// ────────────────────────────  Заглушка TGActions  ──────────────────────────
+let settings = null;
+
+const TGActions = {
+    sendSimpleMessage: (bot, chat, text) => {
+        trace.sent.push({ chat: String(chat), text: String(text) });
+    },
+    sendInteractiveMessage: (bot, chat, setName, text) => {
+        trace.sent.push({ chat: String(chat), text: String(text), set: setName });
+    }
+};
+
+const sandbox = {
+    global: { LoggerFactory: { create: () => ({ info() {}, warn() {}, error() {}, debug() {} }) } },
+    Hub, JSON, Object, Array, String, Number, Math, Error, RegExp, isNaN, parseInt, parseFloat,
+    console
+};
+sandbox.global.TGActions = TGActions;
+vm.createContext(sandbox);
+
+const scriptPath = process.argv[2];
+const code = scriptPath
+    ? fs.readFileSync(scriptPath, 'utf8')
+    : JSON.parse(fs.readFileSync(EXPORT, 'utf8')).scenarioTemplate.data;
+vm.runInContext(code, sandbox, { filename: 'settings.js' });
+
+settings = sandbox.TGActionsSettings;
+sandbox.global.TGActionsSettings = settings;
+
+// Подставляем в профили тестовые чаты и людей: в репозитории лежат плейсхолдеры.
+const access = settings._diag && settings._diag.inventory ? null : null;
+const profiles = sandbox.TGActionsSettings.chats;
+
+// ────────────────────────  Приведение конфига к тестовому  ──────────────────
+// Профили и белый список живут внутри замыкания сценария, снаружи их не
+// достать. Поэтому стенд правит их через тот же путь, что и хаб: пересобирает
+// сценарий с подставленными значениями.
+function rebuildWith(config) {
+    const patched = code
+        .replace("chatId: 'Заполнить',\n            rooms: ['Гостиная'", `chatId: '${config.family}',\n            rooms: ['Гостиная'`)
+        .replace("chatId: 'Заполнить',\n            rooms: ['*']", `chatId: '${config.private}',\n            rooms: ['*']`)
+        .replace("'Заполнить': { name: 'Хозяин', critical: true }",
+            `'${config.owner}': { name: 'Хозяин', critical: true },\n        '${config.kid}': { name: 'Ребёнок', critical: false }`);
+    if (patched === code) {
+        throw new Error('не удалось подставить тестовый конфиг — изменился текст access.js');
+    }
+    const box = Object.assign({}, sandbox);
+    vm.createContext(box);
+    box.global = { LoggerFactory: sandbox.global.LoggerFactory, TGActions };
+    vm.runInContext(patched, box, { filename: 'settings.patched.js' });
+    box.global.TGActionsSettings = box.TGActionsSettings;
+    return box.TGActionsSettings;
+}
+
+settings = rebuildWith({ family: FAMILY_CHAT, private: PRIVATE_CHAT, owner: OWNER, kid: KID });
+sandbox.global.TGActionsSettings = settings;
+
+// ─────────────────────────────  Прогон сценария  ────────────────────────────
+function cmd(name, chatId, userId, params) {
+    const c = settings.botCommands[name];
+    if (!c) { trace.errors.push('нет команды ' + name); return; }
+    c.handler({
+        botName: 'home', chatId: chatId, userId: userId,
+        userName: 'test', params: params || [], message: {}
+    });
+}
+
+function click(setName, r, c, chatId, userId) {
+    const set = settings.buttonSets[setName];
+    if (!set) { trace.errors.push('нет набора ' + setName); return null; }
+    const rows = Array.isArray(set[0]) ? set : [set];
+    const btn = rows[r] && rows[r][c];
+    if (!btn) { trace.errors.push('нет кнопки ' + setName + ':' + r + ':' + c); return null; }
+    btn.handler({
+        botName: 'home', userId: userId, userName: 'test',
+        message: { chat: { id: chatId } }, data: setName + ':' + r + ':' + c
+    });
+    return btn.text;
+}
+
+function labelsOf(setName) {
+    const set = settings.buttonSets[setName];
+    if (!set) return null;
+    return (Array.isArray(set[0]) ? set : [set]).map((row) => row.map((b) => b.text));
+}
+
+const out = [];
+function say(s) { out.push(s); }
+
+say('=== Обход хаба ===');
+const diag = settings._diag;
+say(`комнат с содержимым: ${diag.inventory.rooms.length} (${diag.inventory.rooms.join(', ')})`);
+say(`действий: ${diag.index.actions}, устройств: ${diag.index.devices}, датчиков: ${diag.inventory.sensors.length}`);
+say(`ошибок обхода: ${diag.inventory.errors.length}`);
+say('');
+
+say('=== Что отфильтровано ===');
+const allTypes = new Set();
+for (const room of fixture.rooms) {
+    for (const a of room.accessories) {
+        for (const s of a.services) for (const c of s.characteristics) allTypes.add(c.type);
+    }
+}
+const kept = new Set([...diag.inventory.actions, ...diag.inventory.sensors].map((i) => i.type));
+say('в меню: ' + [...kept].sort().join(', '));
+say('отсеяно: ' + [...allTypes].filter((t) => !kept.has(t)).sort().join(', '));
+say('');
+
+say('=== Меню семейного чата ===');
+const familyHome = labelsOf('fh');
+say('комнаты: ' + JSON.stringify(familyHome));
+say('');
+say('=== Меню личного чата ===');
+say('комнаты: ' + JSON.stringify(labelsOf('ph')));
+say('');
+
+say('=== Критичное: где видно ===');
+for (const key of ['f', 'p']) {
+    const found = [];
+    for (const name of Object.keys(settings.buttonSets)) {
+        if (name[0] !== key) continue;
+        for (const row of settings.buttonSets[name]) {
+            for (const b of row) {
+                if (/Сирена|Кран|Сигнализац/.test(b.text)) found.push(b.text);
+            }
+        }
+    }
+    say(`профиль ${key}: ${found.length ? [...new Set(found)].join(', ') : 'критичного нет'}`);
+}
+say('');
+
+say('=== Сценарий: хозяин в семейном чате включает свет ===');
+cmd('home', FAMILY_CHAT, OWNER);
+const homeSet = trace.sent[trace.sent.length - 1].set;
+const roomIdx = labelsOf(homeSet).findIndex((row) => row[0] === 'Кабинет');
+click(homeSet, roomIdx, 0, FAMILY_CHAT, OWNER);
+const roomSet = trace.sent[trace.sent.length - 1].set;
+say('устройства Кабинета: ' + JSON.stringify(labelsOf(roomSet)));
+click(roomSet, 0, 0, FAMILY_CHAT, OWNER);
+const devSet = trace.sent[trace.sent.length - 1].set;
+say('действия устройства: ' + JSON.stringify(labelsOf(devSet)));
+click(devSet, 0, 0, FAMILY_CHAT, OWNER);
+const actSet = trace.sent[trace.sent.length - 1].set;
+say('кнопки действия: ' + JSON.stringify(labelsOf(actSet)));
+const before = trace.writes.length;
+click(actSet, 0, 0, FAMILY_CHAT, OWNER);
+say('записей в устройства: ' + (trace.writes.length - before)
+    + ' ' + JSON.stringify(trace.writes.slice(before)));
+say('ответ: ' + trace.sent[trace.sent.length - 1].text);
+say('');
+
+say('=== Проверки политики доступа ===');
+const failures = [];
+
+/** @param expect 'deny' — записи быть не должно, 'allow' — должна быть ровно одна. */
+function expect(title, mode, fn) {
+    const n = trace.writes.length;
+    const m = trace.sent.length;
+    fn();
+    const wrote = trace.writes.length - n;
+    const answer = trace.sent.length > m ? trace.sent[trace.sent.length - 1].text : '(молча)';
+    const ok = mode === 'deny' ? wrote === 0 : wrote === 1;
+    if (!ok) failures.push(title + ': ожидали ' + mode + ', записей ' + wrote);
+    say(`${ok ? 'ok  ' : 'FAIL'} ${title} [${mode}] записей=${wrote} | ${answer.split('\n')[0]}`);
+}
+
+expect('чужой чат', 'deny', () => cmd('home', '-100999', OWNER));
+expect('неизвестный человек', 'deny', () => cmd('home', FAMILY_CHAT, STRANGER));
+expect('неизвестный жмёт кнопку напрямую', 'deny',
+    () => click(actSet, 0, 0, FAMILY_CHAT, STRANGER));
+// Ребёнок в белом списке, действие некритичное, комната разрешена профилю —
+// это РАЗРЕШЕНО. Ограничение по человеку касается только критичного.
+expect('ребёнок жмёт некритичное в семейном чате', 'allow',
+    () => click(actSet, 0, 0, FAMILY_CHAT, KID));
+say('');
+
+say('=== Критичное действие мимо меню ===');
+const criticalSet = Object.keys(settings.buttonSets).find((n) =>
+    n[0] === 'p' && settings.buttonSets[n].some((row) => row.some((b) => /Включить/.test(b.text)))
+    && /Сирена|Кран/.test(JSON.stringify(labelsOf(n.replace(/a(\d+)_(\d+)_\d+/, 'd$1_$2')))));
+say('набор с критичным действием в личке: ' + (criticalSet || 'не найден'));
+if (!criticalSet) {
+    failures.push('в личном профиле не нашлось критичного действия — проверка не состоялась');
+} else {
+    expect('ребёнок жмёт критичное в личке', 'deny',
+        () => click(criticalSet, 0, 0, PRIVATE_CHAT, KID));
+    expect('хозяин жмёт критичное в личке', 'allow',
+        () => click(criticalSet, 0, 0, PRIVATE_CHAT, OWNER));
+}
+say('');
+
+say('=== /status и /who ===');
+cmd('status', FAMILY_CHAT, OWNER);
+const statusText = trace.sent[trace.sent.length - 1].text;
+say('/status: ' + JSON.stringify(statusText.slice(0, 200)));
+cmd('who', FAMILY_CHAT, KID);
+say('/who: ' + JSON.stringify(trace.sent[trace.sent.length - 1].text));
+say('');
+
+say('=== Длина callback_data (лимит Telegram 64 байта) ===');
+let maxLen = 0, worst = '';
+for (const name of Object.keys(settings.buttonSets)) {
+    const rows = settings.buttonSets[name];
+    for (let r = 0; r < rows.length; r++) {
+        for (let c = 0; c < rows[r].length; c++) {
+            const data = [name, r, c, FAMILY_CHAT].join(':');
+            const len = Buffer.byteLength(data, 'utf8');
+            if (len > maxLen) { maxLen = len; worst = data; }
+        }
+    }
+}
+say(`наборов: ${Object.keys(settings.buttonSets).length}, максимум ${maxLen} байт — ${worst}`);
+say(maxLen <= 64 ? 'в лимит укладывается' : 'ПРЕВЫШЕН ЛИМИТ');
+if (maxLen > 64) failures.push('callback_data ' + maxLen + ' байт > 64');
+say('');
+
+// Структурные ожидания: они ловят «меню собралось, но не то».
+function must(title, ok) {
+    if (!ok) failures.push(title);
+    say(`${ok ? 'ok  ' : 'FAIL'} ${title}`);
+}
+say('=== Структурные проверки ===');
+must('обход прошёл без ошибок', diag.inventory.errors.length === 0);
+must('пустая комната в меню не попала', diag.inventory.rooms.indexOf('Пустая комната') === -1);
+must('служебные типы отфильтрованы',
+    !kept.has('Identify') && !kept.has('SetupEndpoints') && !kept.has('SelectedRTPStreamConfiguration'));
+must('в семейном чате нет Бойлерной',
+    JSON.stringify(labelsOf('fh')).indexOf('Бойлерная') === -1);
+must('в семейном чате нет критичных кнопок',
+    !Object.keys(settings.buttonSets).filter((n) => n[0] === 'f')
+        .some((n) => /Сирена|Кран воды|Сигнализац/.test(JSON.stringify(labelsOf(n)))));
+must('в личном чате критичное есть',
+    Object.keys(settings.buttonSets).filter((n) => n[0] === 'p')
+        .some((n) => /Сирена|Кран воды|Сигнализац/.test(JSON.stringify(labelsOf(n)))));
+must('действий найдено больше 20', diag.index.actions > 20);
+// Без этой проверки сломанное чтение значений проходит незамеченным:
+// /status печатается, но никто не смотрит, что внутри.
+must('/status показывает фактические показания, а не прочерки',
+    /24\.8/.test(statusText) && statusText.indexOf('—') === -1);
+must('скрытое через OVERRIDES в меню не попало',
+    !Object.keys(settings.buttonSets)
+        .some((n) => /Самоочистка/.test(JSON.stringify(labelsOf(n)))));
+must('стенд не спотыкался', trace.errors.length === 0);
+say('');
+
+if (failures.length) {
+    say('ПРОВАЛЕНО ' + failures.length + ':');
+    failures.forEach((f) => say('  - ' + f));
+} else {
+    say('все проверки пройдены');
+}
+
+process.stdout.write(out.join('\n') + '\n');
+process.exit(failures.length ? 1 : 0);

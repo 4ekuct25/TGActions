@@ -1,0 +1,16 @@
+{
+  "_comment": "Сборка сценария настроек из модулей. Порядок в modules влияет только на читаемость собранного файла; порядок инициализации задан в index.js. Комментарии не вырезаются: этот сценарий человек открывает в хабе и правит руками.",
+  "var": "TGActionsSettings",
+  "entry": "TGActionsSettingsIndex",
+  "stripComments": false,
+  "before": ["banner.js"],
+  "modules": [
+    "actions.js",
+    "access.js",
+    "discovery.js",
+    "menu.js",
+    "commands.js",
+    "index.js"
+  ],
+  "after": []
+}
