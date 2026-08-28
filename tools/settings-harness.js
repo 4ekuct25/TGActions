@@ -56,7 +56,8 @@ function makeCharacteristic(c, aId, sId, accessory, service) {
     };
 }
 
-const roomObjects = fixture.rooms.map((room) => {
+function makeRooms(src) {
+  return src.rooms.map((room) => {
     const accessories = room.accessories.map((a) => {
         const accessory = {};
         const services = a.services.map((s) => {
@@ -79,7 +80,10 @@ const roomObjects = fixture.rooms.map((room) => {
         return accessory;
     });
     return { getName: () => room.name, getAccessories: () => accessories };
-});
+  });
+}
+
+const roomObjects = makeRooms(fixture);
 
 const Hub = {
     getRooms: () => roomObjects,
@@ -187,6 +191,23 @@ function labelsOf(setName) {
     return (Array.isArray(set[0]) ? set : [set]).map((row) => row.map((b) => b.text));
 }
 
+// Чёрный список аксессуаров в репозитории пуст — что прятать, решает хозяин.
+// Механизм от этого непроверенным остаться не должен: собираем второй раз с
+// подставленным списком и смотрим, что аксессуар исчез вместе с его комнатой.
+function buildWithHiddenAccessory(name) {
+    const marker = 'var hiddenAccessories = [\n    ];';
+    if (!code.includes(marker)) {
+        throw new Error('не найден пустой hiddenAccessories — изменился visibility.js');
+    }
+    const patched = code.replace(marker, `var hiddenAccessories = ['${name}'];`);
+    const box = Object.assign({}, sandbox);
+    vm.createContext(box);
+    box.global = { LoggerFactory: sandbox.global.LoggerFactory, TGActions };
+    vm.runInContext(patched, box, { filename: 'settings.hidden.js' });
+    box.global.TGActionsSettings = box.TGActionsSettings;
+    return box.TGActionsSettings;
+}
+
 const out = [];
 function say(s) { out.push(s); }
 
@@ -278,9 +299,8 @@ expect('ребёнок жмёт некритичное в семейном ча�
 say('');
 
 say('=== Критичное действие мимо меню ===');
-const criticalSet = Object.keys(settings.buttonSets).find((n) =>
-    n[0] === 'p' && settings.buttonSets[n].some((row) => row.some((b) => /Включить/.test(b.text)))
-    && /Сирена|Кран/.test(JSON.stringify(labelsOf(n.replace(/a(\d+)_(\d+)_\d+/, 'd$1_$2')))));
+const criticalItem = diag.inventory.actions.find((a) => a.critical);
+const criticalSet = criticalItem ? 'pa' + criticalItem.aId + '_' + criticalItem.cId : null;
 say('набор с критичным действием в личке: ' + (criticalSet || 'не найден'));
 if (!criticalSet) {
     failures.push('в личном профиле не нашлось критичного действия — проверка не состоялась');
@@ -313,6 +333,11 @@ for (const name of Object.keys(settings.buttonSets)) {
     }
 }
 say(`наборов: ${Object.keys(settings.buttonSets).length}, максимум ${maxLen} байт — ${worst}`);
+// Идентификаторы наборов не должны зависеть от позиции в списке: иначе
+// кнопки в уже отправленных сообщениях после любой перестановки ведут не туда.
+const setNames = Object.keys(settings.buttonSets);
+const unstable = setNames.filter((n) => /^[fp][rda]\d+_\d+(_\d+)?$/.test(n));
+say('имена наборов, похожие на индексные: ' + (unstable.length ? unstable.join(', ') : 'нет'));
 say(maxLen <= 64 ? 'в лимит укладывается' : 'ПРЕВЫШЕН ЛИМИТ');
 if (maxLen > 64) failures.push('callback_data ' + maxLen + ' байт > 64');
 say('');
@@ -331,14 +356,22 @@ must('local.js подставил id чатов',
 must('пустая комната в меню не попала', diag.inventory.rooms.indexOf('Пустая комната') === -1);
 // Скрытая в хабе комната. Фикстура даёт её с пятью устройствами, так что
 // «не попала» здесь означает работу фильтра, а не пустоту комнаты.
-must('скрытая комната отброшена', diag.inventory.rooms.indexOf('Новая комната') === -1
+must('комната из чёрного списка отброшена',
+    diag.inventory.rooms.indexOf('Новая комната') === -1
     && !JSON.stringify(labelsOf('ph')).includes('Новая комната')
     && !statusText.includes('Новая комната'));
-// Обход хаба в фикстуре намеренно перетасован: если порядок не задаётся
-// конфигом, комнаты выедут в порядке обхода и проверка упадёт.
-must('комнаты идут в порядке из rooms.js',
+// Обход хаба в фикстуре намеренно перетасован: без явной сортировки
+// комнаты выедут в порядке обхода и проверка упадёт.
+must('комнаты по алфавиту',
     JSON.stringify(diag.inventory.rooms)
-    === JSON.stringify(['Гостиная', 'Улица', 'Кабинет', 'Бойлерная', 'Детские комнаты', 'Кухня']));
+    === JSON.stringify(['Бойлерная', 'Гостиная', 'Детские комнаты', 'Кабинет', 'Кухня', 'Улица']));
+// Чёрный список аксессуаров: в репозитории он пуст, поэтому проверяем на
+// подставленном. «Датчик дыма» — единственный аксессуар Кухни, вместе с ним
+// должна уйти и комната.
+const hiddenAccSettings = buildWithHiddenAccessory('Датчик дыма');
+must('аксессуар из чёрного списка отброшен вместе с опустевшей комнатой',
+    hiddenAccSettings._diag.inventory.rooms.indexOf('Кухня') === -1
+    && diag.inventory.rooms.indexOf('Кухня') !== -1);
 must('/status: датчики внутри комнаты по алфавиту',
     statusText.indexOf('Влажность гостиная') < statusText.indexOf('Температура гостиная'));
 must('/status: комнаты в порядке хаба',
@@ -376,6 +409,29 @@ must('автозапуск не ссылается на несуществующ
     referenced.every((name) => Object.prototype.hasOwnProperty.call(settings.bots, name)));
 must('хотя бы у одного бота включён autoStart',
     Object.keys(settings.bots).some((k) => settings.bots[k] && settings.bots[k].autoStart));
+// Устойчивость идентификаторов: имя набора строится из aId/cId и хеша имени
+// комнаты. Проверяем не форму строки, а свойство — что при другом порядке
+// комнат имена наборов те же.
+// Устойчивость проверяем свойством, а не формой строки: собираем те же
+// настройки на хабе с перевёрнутым порядком комнат и сверяем имена наборов.
+// При индексных именах они бы разъехались.
+const reorderedNames = (() => {
+    const shuffled = JSON.parse(JSON.stringify(fixture));
+    shuffled.rooms.reverse();
+    const box = Object.assign({}, sandbox);
+    const rooms2 = makeRooms(shuffled);
+    box.Hub = Object.assign({}, Hub, { getRooms: () => rooms2 });
+    vm.createContext(box);
+    box.global = { LoggerFactory: sandbox.global.LoggerFactory, TGActions };
+    vm.runInContext(code, box, { filename: 'settings.reordered.js' });
+    return Object.keys(box.TGActionsSettings.buttonSets).sort();
+})();
+must('имена наборов не зависят от порядка комнат',
+    JSON.stringify(reorderedNames) === JSON.stringify(setNames.slice().sort()));
+must('набор устройства адресуется по aId',
+    setNames.some((n) => n === 'fd39' || n === 'pd39'));
+must('набор действия адресуется по aId и cId',
+    setNames.some((n) => n === 'fa39_15' || n === 'pa39_15'));
 must('стенд не спотыкался', trace.errors.length === 0);
 say('');
 

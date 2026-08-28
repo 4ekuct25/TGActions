@@ -8,7 +8,7 @@
   ],
   "modules": [
     "actions.js",
-    "rooms.js",
+    "visibility.js",
     "access.js",
     "discovery.js",
     "menu.js",

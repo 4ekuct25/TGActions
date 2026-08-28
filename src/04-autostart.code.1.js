@@ -4,10 +4,20 @@
     var startDelay = 10; // 30 секунд
  //   _logger.info('init: scheduling auto-start of all bots in {} ms', startDelay);
     
-    setTimeout(function() {
-        // Здесь раньше стоял жёсткий startPolling('botName1'). При
-        // переименовании бота строка выбрасывала исключение ДО цикла
-        // ниже, и не стартовал никто. Цикл делает то же самое и сам.
+    // Порядок загрузки глобальных сценариев хаб не гарантирует, а при
+    // переустановке настроек они на минуту исчезают совсем. Без проверки
+    // обращение к .bots бросает TypeError, и бот не стартует вообще —
+    // так уже было. Поэтому ждём появления настроек и пробуем повторно.
+    var attempt = 0;
+    function startAll() {
+        attempt = attempt + 1;
+        if (!global.TGActionsSettings || !global.TGActionsSettings.bots
+                || !global.TGActions) {
+            if (attempt < 10) {
+                setTimeout(startAll, 15000);
+            }
+            return;
+        }
         for (var botName in global.TGActionsSettings.bots) {
 //             _logger.info('1');
             if (!global.TGActionsSettings.bots.hasOwnProperty(botName)) continue;
@@ -17,6 +27,8 @@
                     global.TGActions.startPolling(botName);
             }
         }
-    }, startDelay);
+    }
+
+    setTimeout(startAll, startDelay);
     
     

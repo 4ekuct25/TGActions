@@ -34,10 +34,12 @@ SETTINGS_MUTATIONS = [
      "if (true) {", "комнаты профиля игнорируются"),
     ("menu.js", "if (item.critical && !profile.allowCritical) {", "if (false) {",
      "критичное попадает в семейное меню"),
-    ("discovery.js", "if (!roomsCfg.isVisible(roomName)) {", "if (false) {",
-     "скрытые комнаты не отбрасываются"),
-    ("discovery.js", "rooms: roomsCfg.sortNames(roomNames),", "rooms: roomNames,",
-     "комнаты не сортируются в порядок хаба"),
+    ("discovery.js", "if (hidden.isRoomHidden(roomName)) {", "if (true && false) {",
+     "чёрный список комнат не работает"),
+    ("discovery.js", "if (hidden.isAccessoryHidden(String(accs[a].getName()))) {",
+     "if (true && false) {", "чёрный список аксессуаров не работает"),
+    ("discovery.js", "rooms: hidden.sortNames(roomNames),", "rooms: roomNames,",
+     "комнаты не сортируются по алфавиту"),
     ("commands.js", "var list = byRoom[room].slice().sort(byTitle);",
      "var list = byRoom[room];", "датчики в /status не сортируются"),
     ("discovery.js", "if (override.hide) {", "if (false) {",
@@ -58,6 +60,10 @@ SETTINGS_MUTATIONS = [
 # зон был виден, а не растворялся в «всё зелено».
 MUTATIONS = [
     ("polling.js", "backoff > 60000", "backoff > 70000"),
+    # getBot должен быть ВНУТРИ try: снаружи его ошибка обрывала цепочку опроса
+    # навсегда, и бот молча замолкал.
+    ("polling.js", "            bot = getBot(botName);",
+     "            bot = getBot(botName + 'X');"),
     (
         "polling.js",
         "inFlight[botName] = true;",

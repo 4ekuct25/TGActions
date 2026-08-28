@@ -312,6 +312,19 @@ step('startPolling повторно', function () {
 getUpdatesScript.forEach(function (r, i) {
     step('poll #' + (i + 1) + ' (ответ ' + r.status + ')', function () { flush(1); });
 });
+// Настройки на время исчезают — ровно то, что происходит при переустановке
+// сценария в хабе. Цепочка опроса обязана пережить это и продолжиться.
+step('настройки исчезли на один опрос', function () {
+    const saved = sandbox.global.TGActionsSettings;
+    sandbox.global.TGActionsSettings = undefined;
+    const timersBefore = trace.timers.length;
+    flush(1);
+    sandbox.global.TGActionsSettings = saved;
+    trace.logs.push('--- таймеров заведено после сбоя: '
+        + (trace.timers.length - timersBefore > 0 ? 'да' : 'НЕТ, цепочка оборвалась') + ' ---');
+});
+step('опрос продолжается после сбоя', function () { flush(1); });
+
 step('stopPolling', function () {
     TG.stopPolling('botName1');
 });

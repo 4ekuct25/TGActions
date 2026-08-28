@@ -9,11 +9,11 @@
  * (см. JOURNAL.md, запись от 2026-08-28). Запись — нет, поэтому пишем только
  * из обработчиков кнопок, которые вызываются по цепочке от блочного сценария.
  *
- * Зависимости: actions, rooms.
+ * Зависимости: actions, visibility.
  */
 function TGActionsDiscovery(ns) {
     var rules = ns.actions;
-    var roomsCfg = ns.rooms;
+    var hidden = ns.visibility;
 
     /**
      * UUID характеристики в хабе имеет вид 'aId.sId.cId'. Числовой пары
@@ -137,9 +137,9 @@ function TGActionsDiscovery(ns) {
                 errors.push('room ' + r + ': ' + e);
                 continue;
             }
-            // Комнаты нет в списке rooms.js — она скрыта в хабе либо не нужна
-            // боту. Пропускаем целиком: ни меню, ни /status её не увидят.
-            if (!roomsCfg.isVisible(roomName)) {
+            // Комната в чёрном списке — пропускаем целиком: ни меню, ни
+            // /status её не увидят.
+            if (hidden.isRoomHidden(roomName)) {
                 continue;
             }
             var accs;
@@ -152,6 +152,9 @@ function TGActionsDiscovery(ns) {
             var roomHasSomething = false;
 
             for (var a = 0; a < accs.length; a++) {
+                if (hidden.isAccessoryHidden(String(accs[a].getName()))) {
+                    continue;
+                }
                 var services;
                 try {
                     services = accs[a].getServices(true);
@@ -191,12 +194,11 @@ function TGActionsDiscovery(ns) {
             }
         }
 
-        // Порядок обхода Hub.getRooms() к порядку в хабе отношения не имеет,
-        // поэтому сортируем явно.
+        // Порядок обхода Hub.getRooms() произволен, поэтому сортируем явно.
         return {
             actions: actions,
             sensors: sensors,
-            rooms: roomsCfg.sortNames(roomNames),
+            rooms: hidden.sortNames(roomNames),
             errors: errors
         };
     }

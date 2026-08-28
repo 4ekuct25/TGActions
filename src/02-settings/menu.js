@@ -20,6 +20,45 @@ function TGActionsMenu(ns) {
 
     var BACK = '‹ Назад';
 
+    /**
+     * Имена наборов кнопок строятся из устойчивых признаков самой сущности,
+     * а не из её позиции в списке.
+     *
+     * Раньше в имени сидели индексы комнаты и устройства, и любая перестановка
+     * (добавили комнату, переименовали, сменили порядок) делала кнопки в уже
+     * отправленных сообщениях указывающими не туда. Теперь: комната — хеш
+     * имени, устройство — aId, действие — aId с cId. Эти значения меняются
+     * только вместе с самим устройством.
+     *
+     * Что осталось неустойчивым: позиция кнопки ВНУТРИ набора (движок адресует
+     * её как r:c). Если у комнаты изменится состав устройств, старая кнопка в
+     * истории чата может попасть в соседнее. Лечится повторным /home; чинить
+     * полностью — значит менять формат callback_data в движке.
+     */
+    function hashName(name) {
+        var h = 5381;
+        for (var i = 0; i < name.length; i++) {
+            h = ((h * 33) ^ name.charCodeAt(i)) >>> 0;
+        }
+        return h.toString(36);
+    }
+
+    function homeSet(profile) {
+        return profile.key + 'h';
+    }
+
+    function roomSet(profile, roomName) {
+        return profile.key + 'r' + hashName(roomName);
+    }
+
+    function deviceSet(profile, item) {
+        return profile.key + 'd' + item.aId;
+    }
+
+    function actionSet(profile, item) {
+        return profile.key + 'a' + item.aId + '_' + item.cId;
+    }
+
     function send(cq, text) {
         global.TGActions.sendSimpleMessage(cq.botName, String(cq.message.chat.id), text);
     }
@@ -132,37 +171,37 @@ function TGActionsMenu(ns) {
                     continue;
                 }
 
-                var roomSet = profile.key + 'r' + r;
+                var rSet = roomSet(profile, roomName);
                 var deviceRows = [];
 
                 for (var d = 0; d < devices.order.length; d++) {
                     var deviceName = devices.order[d];
                     var items = devices.map[deviceName];
-                    var deviceSet = profile.key + 'd' + r + '_' + d;
+                    var dSet = deviceSet(profile, items[0]);
                     var actionRows = [];
 
                     for (var i = 0; i < items.length; i++) {
-                        var actionSet = profile.key + 'a' + r + '_' + d + '_' + i;
-                        buttonSets[actionSet] = actionButtons(items[i], deviceSet);
-                        actionRows.push([navButton(actionSet, items[i].title)]);
+                        var aSet = actionSet(profile, items[i]);
+                        buttonSets[aSet] = actionButtons(items[i], dSet);
+                        actionRows.push([navButton(aSet, items[i].title)]);
                         index.actions++;
                     }
-                    actionRows.push([navButton(roomSet, BACK)]);
-                    buttonSets[deviceSet] = actionRows;
-                    deviceRows.push([navButton(deviceSet, deviceName)]);
+                    actionRows.push([navButton(rSet, BACK)]);
+                    buttonSets[dSet] = actionRows;
+                    deviceRows.push([navButton(dSet, deviceName)]);
                     index.devices++;
                 }
 
-                deviceRows.push([navButton(profile.key + 'h', BACK)]);
-                buttonSets[roomSet] = deviceRows;
-                homeRows.push([navButton(roomSet, roomName)]);
+                deviceRows.push([navButton(homeSet(profile), BACK)]);
+                buttonSets[rSet] = deviceRows;
+                homeRows.push([navButton(rSet, roomName)]);
                 index.rooms++;
             }
 
-            buttonSets[profile.key + 'h'] = homeRows.length
+            buttonSets[homeSet(profile)] = homeRows.length
                 ? homeRows
                 : [[{ text: 'Нет доступных устройств', handler: function () {} }]];
-            homeOf[String(profile.chatId)] = profile.key + 'h';
+            homeOf[String(profile.chatId)] = homeSet(profile);
         }
 
         return { buttonSets: buttonSets, homeOf: homeOf, index: index };
