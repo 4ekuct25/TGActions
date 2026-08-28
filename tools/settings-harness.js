@@ -347,6 +347,21 @@ must('/status показывает фактические показания, а
 must('скрытое через OVERRIDES в меню не попало',
     !Object.keys(settings.buttonSets)
         .some((n) => /Самоочистка/.test(JSON.stringify(labelsOf(n)))));
+// Автозапуск — отдельный блочный сценарий, и он ссылается на имена ботов
+// строками. Рассинхрон с bots ловится только так: в хабе он проявился как
+// «Bot botName1 not found» и молчащий бот.
+const autostart = fs.readFileSync(
+    path.join(ROOT, 'src', '04-autostart.code.1.js'), 'utf8')
+    // Комментарии выкидываем: упоминание имени в пояснении — не вызов.
+    // Первая версия проверки поймала ровно такое упоминание и дала ложный отказ.
+    .split('\n').filter((l) => !l.trim().startsWith('//')).join('\n');
+const referenced = [...autostart.matchAll(/startPolling\(\s*'([^']+)'\s*\)/g)]
+    .map((m) => m[1]);
+must('автозапуск не ссылается на несуществующих ботов: '
+     + (referenced.length ? referenced.join(', ') : 'жёстких имён нет'),
+    referenced.every((name) => Object.prototype.hasOwnProperty.call(settings.bots, name)));
+must('хотя бы у одного бота включён autoStart',
+    Object.keys(settings.bots).some((k) => settings.bots[k] && settings.bots[k].autoStart));
 must('стенд не спотыкался', trace.errors.length === 0);
 say('');
 
