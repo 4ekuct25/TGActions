@@ -3,6 +3,15 @@ TGActionsSettings = (function () {
     var _logger = global.LoggerFactory.create('TGActionsSettings');
 
 
+    // ──────────────────────── Описание бота по умолчанию ────────────────────
+    // Подставляется движком в setBotMeta, если у бота в bots не заданы
+    // description / shortDescription. Отдаётся наружу как
+    // botDescription / botShortDescription — движок читает их оттуда,
+    // свободных глобальных переменных нет.
+    // Лимиты Telegram: description ≤ 512 символов, short_description ≤ 120.
+    var BOT_DESCRIPTION = 'Бот автоматизации умного дома на базе Sprut.hub';
+    var BOT_SHORT_DESCRIPTION = 'Умный дом';
+
     // ───────────────────────────── Bots config ─────────────────────────────
     var bots = {
         _default: 'botName1',
@@ -309,6 +318,8 @@ var buttonSets = {
 
     // ───────────────────────────── Public API ─────────────────────────────
     return {
+        botDescription: BOT_DESCRIPTION,
+        botShortDescription: BOT_SHORT_DESCRIPTION,
         bots: bots,
         chats: chats,
         replyKeyboardSets: replyKeyboardSets,
