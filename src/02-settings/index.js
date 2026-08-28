@@ -11,6 +11,7 @@ function TGActionsSettingsIndex() {
     ns.local = (typeof TGActionsLocal === 'function') ? TGActionsLocal() : null;
 
     ns.actions = TGActionsActions();
+    ns.rooms = TGActionsRooms();
     ns.access = TGActionsAccess(ns);
     ns.discovery = TGActionsDiscovery(ns);
     ns.menu = TGActionsMenu(ns);

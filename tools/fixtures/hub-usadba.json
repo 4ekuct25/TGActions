@@ -1,6 +1,71 @@
 {
   "rooms": [
     {
+      "name": "Кухня",
+      "accessories": [
+        {
+          "aId": 19,
+          "name": "Датчик дыма",
+          "services": [
+            {
+              "sId": 17,
+              "type": "Switch",
+              "name": "Сирена",
+              "visible": true,
+              "characteristics": [
+                {
+                  "cId": 19,
+                  "type": "On",
+                  "name": "Включен",
+                  "format": "bool",
+                  "min": null,
+                  "max": null,
+                  "step": null,
+                  "value": false
+                }
+              ]
+            },
+            {
+              "sId": 13,
+              "type": "SmokeSensor",
+              "name": "Дым кухня",
+              "visible": true,
+              "characteristics": [
+                {
+                  "cId": 15,
+                  "type": "SmokeDetected",
+                  "name": "Дым",
+                  "format": "int",
+                  "min": null,
+                  "max": null,
+                  "step": null,
+                  "value": 0
+                }
+              ]
+            },
+            {
+              "sId": 1,
+              "type": "AccessoryInformation",
+              "name": "Информация об аксессуаре",
+              "visible": true,
+              "characteristics": [
+                {
+                  "cId": 4,
+                  "type": "Identify",
+                  "name": "Идентифицировать",
+                  "format": "bool",
+                  "min": null,
+                  "max": null,
+                  "step": null,
+                  "value": false
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "Гостиная",
       "accessories": [
         {
@@ -450,6 +515,101 @@
       ]
     },
     {
+      "name": "Новая комната",
+      "accessories": [
+        {
+          "aId": 34,
+          "name": "IPC113065319",
+          "services": [
+            {
+              "sId": 22,
+              "type": "CameraControl",
+              "name": "Управление камерой",
+              "visible": true,
+              "characteristics": [
+                {
+                  "cId": 24,
+                  "type": "On",
+                  "name": "Включен",
+                  "format": "bool",
+                  "min": null,
+                  "max": null,
+                  "step": null,
+                  "value": false
+                },
+                {
+                  "cId": 27,
+                  "type": "OpticalZoom",
+                  "name": "OpticalZoom",
+                  "format": "float",
+                  "min": 0,
+                  "max": 100,
+                  "step": 1,
+                  "value": 0
+                }
+              ]
+            },
+            {
+              "sId": 13,
+              "type": "CameraRTPStreamManagement",
+              "name": "Управление потоком камеры",
+              "visible": true,
+              "characteristics": [
+                {
+                  "cId": 15,
+                  "type": "Active",
+                  "name": "Активно",
+                  "format": "int",
+                  "min": 0,
+                  "max": 1,
+                  "step": 1,
+                  "value": 1
+                },
+                {
+                  "cId": 17,
+                  "type": "SelectedRTPStreamConfiguration",
+                  "name": "RTP",
+                  "format": "string",
+                  "min": null,
+                  "max": null,
+                  "step": null,
+                  "value": "TLV"
+                },
+                {
+                  "cId": 18,
+                  "type": "SetupEndpoints",
+                  "name": "Эндпойнты",
+                  "format": "string",
+                  "min": null,
+                  "max": null,
+                  "step": null,
+                  "value": "TLV"
+                }
+              ]
+            },
+            {
+              "sId": 1,
+              "type": "AccessoryInformation",
+              "name": "Информация об аксессуаре",
+              "visible": true,
+              "characteristics": [
+                {
+                  "cId": 4,
+                  "type": "Identify",
+                  "name": "Идентифицировать",
+                  "format": "bool",
+                  "min": null,
+                  "max": null,
+                  "step": null,
+                  "value": false
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "Кабинет",
       "accessories": [
         {
@@ -655,115 +815,6 @@
       ]
     },
     {
-      "name": "Детские комнаты",
-      "accessories": [
-        {
-          "aId": 13,
-          "name": "Лампа Агата",
-          "services": [
-            {
-              "sId": 13,
-              "type": "Lightbulb",
-              "name": "Лампочка",
-              "visible": true,
-              "characteristics": [
-                {
-                  "cId": 15,
-                  "type": "On",
-                  "name": "Включен",
-                  "format": "bool",
-                  "min": null,
-                  "max": null,
-                  "step": null,
-                  "value": false
-                },
-                {
-                  "cId": 16,
-                  "type": "Brightness",
-                  "name": "Яркость",
-                  "format": "int",
-                  "min": 0,
-                  "max": 100,
-                  "step": 1,
-                  "value": 50
-                }
-              ]
-            },
-            {
-              "sId": 1,
-              "type": "AccessoryInformation",
-              "name": "Информация об аксессуаре",
-              "visible": true,
-              "characteristics": [
-                {
-                  "cId": 4,
-                  "type": "Identify",
-                  "name": "Идентифицировать",
-                  "format": "bool",
-                  "min": null,
-                  "max": null,
-                  "step": null,
-                  "value": false
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "aId": 14,
-          "name": "Лампа Арина",
-          "services": [
-            {
-              "sId": 13,
-              "type": "Lightbulb",
-              "name": "Лампочка",
-              "visible": true,
-              "characteristics": [
-                {
-                  "cId": 15,
-                  "type": "On",
-                  "name": "Включен",
-                  "format": "bool",
-                  "min": null,
-                  "max": null,
-                  "step": null,
-                  "value": false
-                },
-                {
-                  "cId": 16,
-                  "type": "Brightness",
-                  "name": "Яркость",
-                  "format": "int",
-                  "min": 0,
-                  "max": 100,
-                  "step": 1,
-                  "value": 25
-                }
-              ]
-            },
-            {
-              "sId": 1,
-              "type": "AccessoryInformation",
-              "name": "Информация об аксессуаре",
-              "visible": true,
-              "characteristics": [
-                {
-                  "cId": 4,
-                  "type": "Identify",
-                  "name": "Идентифицировать",
-                  "format": "bool",
-                  "min": null,
-                  "max": null,
-                  "step": null,
-                  "value": false
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
       "name": "Бойлерная",
       "accessories": [
         {
@@ -853,20 +904,20 @@
       ]
     },
     {
-      "name": "Кухня",
+      "name": "Детские комнаты",
       "accessories": [
         {
-          "aId": 19,
-          "name": "Датчик дыма",
+          "aId": 13,
+          "name": "Лампа Агата",
           "services": [
             {
-              "sId": 17,
-              "type": "Switch",
-              "name": "Сирена",
+              "sId": 13,
+              "type": "Lightbulb",
+              "name": "Лампочка",
               "visible": true,
               "characteristics": [
                 {
-                  "cId": 19,
+                  "cId": 15,
                   "type": "On",
                   "name": "Включен",
                   "format": "bool",
@@ -874,24 +925,16 @@
                   "max": null,
                   "step": null,
                   "value": false
-                }
-              ]
-            },
-            {
-              "sId": 13,
-              "type": "SmokeSensor",
-              "name": "Дым кухня",
-              "visible": true,
-              "characteristics": [
+                },
                 {
-                  "cId": 15,
-                  "type": "SmokeDetected",
-                  "name": "Дым",
+                  "cId": 16,
+                  "type": "Brightness",
+                  "name": "Яркость",
                   "format": "int",
-                  "min": null,
-                  "max": null,
-                  "step": null,
-                  "value": 0
+                  "min": 0,
+                  "max": 100,
+                  "step": 1,
+                  "value": 50
                 }
               ]
             },
@@ -914,24 +957,19 @@
               ]
             }
           ]
-        }
-      ]
-    },
-    {
-      "name": "Новая комната",
-      "accessories": [
+        },
         {
-          "aId": 34,
-          "name": "IPC113065319",
+          "aId": 14,
+          "name": "Лампа Арина",
           "services": [
             {
-              "sId": 22,
-              "type": "CameraControl",
-              "name": "Управление камерой",
+              "sId": 13,
+              "type": "Lightbulb",
+              "name": "Лампочка",
               "visible": true,
               "characteristics": [
                 {
-                  "cId": 24,
+                  "cId": 15,
                   "type": "On",
                   "name": "Включен",
                   "format": "bool",
@@ -941,52 +979,14 @@
                   "value": false
                 },
                 {
-                  "cId": 27,
-                  "type": "OpticalZoom",
-                  "name": "OpticalZoom",
-                  "format": "float",
+                  "cId": 16,
+                  "type": "Brightness",
+                  "name": "Яркость",
+                  "format": "int",
                   "min": 0,
                   "max": 100,
                   "step": 1,
-                  "value": 0
-                }
-              ]
-            },
-            {
-              "sId": 13,
-              "type": "CameraRTPStreamManagement",
-              "name": "Управление потоком камеры",
-              "visible": true,
-              "characteristics": [
-                {
-                  "cId": 15,
-                  "type": "Active",
-                  "name": "Активно",
-                  "format": "int",
-                  "min": 0,
-                  "max": 1,
-                  "step": 1,
-                  "value": 1
-                },
-                {
-                  "cId": 17,
-                  "type": "SelectedRTPStreamConfiguration",
-                  "name": "RTP",
-                  "format": "string",
-                  "min": null,
-                  "max": null,
-                  "step": null,
-                  "value": "TLV"
-                },
-                {
-                  "cId": 18,
-                  "type": "SetupEndpoints",
-                  "name": "Эндпойнты",
-                  "format": "string",
-                  "min": null,
-                  "max": null,
-                  "step": null,
-                  "value": "TLV"
+                  "value": 25
                 }
               ]
             },

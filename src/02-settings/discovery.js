@@ -9,10 +9,11 @@
  * (см. JOURNAL.md, запись от 2026-08-28). Запись — нет, поэтому пишем только
  * из обработчиков кнопок, которые вызываются по цепочке от блочного сценария.
  *
- * Зависимости: actions.
+ * Зависимости: actions, rooms.
  */
 function TGActionsDiscovery(ns) {
     var rules = ns.actions;
+    var roomsCfg = ns.rooms;
 
     /**
      * UUID характеристики в хабе имеет вид 'aId.sId.cId'. Числовой пары
@@ -136,6 +137,11 @@ function TGActionsDiscovery(ns) {
                 errors.push('room ' + r + ': ' + e);
                 continue;
             }
+            // Комнаты нет в списке rooms.js — она скрыта в хабе либо не нужна
+            // боту. Пропускаем целиком: ни меню, ни /status её не увидят.
+            if (!roomsCfg.isVisible(roomName)) {
+                continue;
+            }
             var accs;
             try {
                 accs = rooms[r].getAccessories();
@@ -185,7 +191,14 @@ function TGActionsDiscovery(ns) {
             }
         }
 
-        return { actions: actions, sensors: sensors, rooms: roomNames, errors: errors };
+        // Порядок обхода Hub.getRooms() к порядку в хабе отношения не имеет,
+        // поэтому сортируем явно.
+        return {
+            actions: actions,
+            sensors: sensors,
+            rooms: roomsCfg.sortNames(roomNames),
+            errors: errors
+        };
     }
 
     /** Текущее значение — читаем в момент показа, не кэшируем. */

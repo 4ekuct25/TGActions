@@ -13,6 +13,15 @@ function TGActionsCommands(ns) {
         global.TGActions.sendSimpleMessage(ctx.botName, String(ctx.chatId), text);
     }
 
+    // localeCompare в Nashorn поведение не гарантирует, поэтому сравниваем
+    // напрямую: для одного алфавита порядок кодовых точек — это алфавит.
+    function byTitle(a, b) {
+        if (a.title === b.title) {
+            return 0;
+        }
+        return a.title < b.title ? -1 : 1;
+    }
+
     /** Общий вход: чат настроен и человек известен. */
     function gate(ctx) {
         var profile = access.profileByChat(ctx.chatId);
@@ -48,20 +57,35 @@ function TGActionsCommands(ns) {
                 if (!profile) {
                     return;
                 }
-                var lines = [];
-                var lastRoom = null;
+                // Раскладываем по комнатам, а не идём по плоскому списку:
+                // порядок комнат берётся из rooms.js (порядок хаба), датчики
+                // внутри комнаты сортируются по имени. Порядок обхода хаба
+                // не годится ни для того, ни для другого.
+                var byRoom = {};
                 var sensors = state.inventory.sensors;
-                for (var i = 0; i < sensors.length; i++) {
+                var i;
+                for (i = 0; i < sensors.length; i++) {
                     var s = sensors[i];
-                    if (!access.roomAllowed(profile, s.room)) {
+                    if (!byRoom[s.room]) {
+                        byRoom[s.room] = [];
+                    }
+                    byRoom[s.room].push(s);
+                }
+
+                var lines = [];
+                var rooms = state.inventory.rooms;
+                for (i = 0; i < rooms.length; i++) {
+                    var room = rooms[i];
+                    if (!access.roomAllowed(profile, room) || !byRoom[room]) {
                         continue;
                     }
-                    if (s.room !== lastRoom) {
-                        lines.push('');
-                        lines.push('*' + s.room + '*');
-                        lastRoom = s.room;
+                    var list = byRoom[room].slice().sort(byTitle);
+                    lines.push('');
+                    lines.push('*' + room + '*');
+                    for (var j = 0; j < list.length; j++) {
+                        lines.push(list[j].title + ': '
+                            + menu.valueLabel(list[j], discovery.readValue(list[j])));
                     }
-                    lines.push(s.title + ': ' + menu.valueLabel(s, discovery.readValue(s)));
                 }
                 reply(ctx, lines.length ? lines.join('\n') : 'Датчиков в доступных комнатах нет');
             }

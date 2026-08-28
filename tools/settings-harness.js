@@ -329,6 +329,20 @@ must('обход прошёл без ошибок', diag.inventory.errors.length
 must('local.js подставил id чатов',
     settings.chats.f === FAMILY_CHAT && settings.chats.p === PRIVATE_CHAT);
 must('пустая комната в меню не попала', diag.inventory.rooms.indexOf('Пустая комната') === -1);
+// Скрытая в хабе комната. Фикстура даёт её с пятью устройствами, так что
+// «не попала» здесь означает работу фильтра, а не пустоту комнаты.
+must('скрытая комната отброшена', diag.inventory.rooms.indexOf('Новая комната') === -1
+    && !JSON.stringify(labelsOf('ph')).includes('Новая комната')
+    && !statusText.includes('Новая комната'));
+// Обход хаба в фикстуре намеренно перетасован: если порядок не задаётся
+// конфигом, комнаты выедут в порядке обхода и проверка упадёт.
+must('комнаты идут в порядке из rooms.js',
+    JSON.stringify(diag.inventory.rooms)
+    === JSON.stringify(['Гостиная', 'Улица', 'Кабинет', 'Бойлерная', 'Детские комнаты', 'Кухня']));
+must('/status: датчики внутри комнаты по алфавиту',
+    statusText.indexOf('Влажность гостиная') < statusText.indexOf('Температура гостиная'));
+must('/status: комнаты в порядке хаба',
+    statusText.indexOf('*Гостиная*') < statusText.indexOf('*Кухня*'));
 must('служебные типы отфильтрованы',
     !kept.has('Identify') && !kept.has('SetupEndpoints') && !kept.has('SelectedRTPStreamConfiguration'));
 must('в семейном чате нет Бойлерной',
