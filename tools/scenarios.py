@@ -22,6 +22,7 @@ json.dumps(obj, ensure_ascii=False, indent=2) без завершающего п
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -320,8 +321,13 @@ def build_local():
 
     print("собрано в dist/ (импортировать в хаб именно это):")
     for name in written:
-        size = len((DIST / name).read_bytes())
-        print(f"  {size:>7} байт  {name}")
+        # Размер поля data, а не файла: сравнивать надо с потолком хаба,
+        # а он про скрипт сценария. Раньше здесь печатался размер файла —
+        # два разных числа под одной подписью сбивают с толку.
+        data = json.loads((DIST / name).read_text(encoding="utf-8"))
+        size = len(data["scenarioTemplate"]["data"].encode("utf-8"))
+        lines = len(data["scenarioTemplate"]["data"].split("\n"))
+        print(f"  {size:>7} байт  {lines:>4} строк  {name}")
 
     if missing:
         print(
@@ -332,18 +338,54 @@ def build_local():
         )
         return 1
 
-    # Предупреждаем, если в сборке для хаба остались незаполненные значения:
-    # молча уехавший плейсхолдер выглядит как рабочая конфигурация.
-    leaked = [
-        n for n in written
-        if "Заполнить" in (DIST / n).read_text(encoding="utf-8")
-    ]
-    if leaked:
-        print("\nв сборке остались плейсхолдеры «Заполнить»: " + ", ".join(leaked),
-              file=sys.stderr)
-        print("это нормально, пока не известен id семейной группы — узнать: /who в группе",
-              file=sys.stderr)
+    warn_incomplete_local()
     return 0
+
+
+def warn_incomplete_local():
+    """Проверяет полноту local.js, а не текст собранного скрипта.
+
+    Первая версия искала слово «Заполнить» в сборке — и ругалась ВСЕГДА:
+    плейсхолдеры живут в отслеживаемых модулях и остаются в тексте, а
+    подстановка из local.js происходит в рантайме. Проверка меряла не то и
+    поднимала тревогу на полностью настроенной системе.
+    """
+    local = SRC / "02-settings" / "local.js"
+    access = SRC / "02-settings" / "access.js"
+    if not local.is_file() or not access.is_file():
+        return
+
+    text = local.read_text(encoding="utf-8")
+    missing = []
+
+    if re.search(r"botKey:\s*'(Заполнить|\d+:ЗАМЕНИТЬ)'", text):
+        missing.append("botKey не заполнен")
+
+    # Профили описаны в access.js; local.js должен покрыть chatId каждого.
+    profile_keys = re.findall(r"key:\s*'(\w+)',", access.read_text(encoding="utf-8"))
+    chats_block = re.search(r"chats:\s*\{(.*?)\n\s*\},", text, re.S)
+    filled = set()
+    if chats_block:
+        for line in chats_block.group(1).split("\n"):
+            if line.strip().startswith("//"):
+                continue
+            found = re.match(r"\s*(\w+)\s*:", line)
+            if found:
+                filled.add(found.group(1))
+    for key in profile_keys:
+        if key not in filled:
+            missing.append(f"нет chatId для профиля '{key}'")
+
+    users_block = re.search(r"users:\s*\{(.*?)\n\s*\}", text, re.S)
+    if not users_block or not re.search(r"'\d{5,}'", users_block.group(1)):
+        missing.append("белый список людей пуст")
+
+    if missing:
+        print("\nlocal.js неполон:", file=sys.stderr)
+        for item in missing:
+            print("  - " + item, file=sys.stderr)
+    else:
+        print("\nlocal.js полон: токен, чаты всех профилей, белый список")
 
 
 def report_sizes(read):
