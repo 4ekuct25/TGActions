@@ -89,21 +89,26 @@ function TGActionsPolling(ns) {
         }
         inFlight[botName] = true;
 
-        var bot = getBot(botName);
-        var offset = pollOffsets[botName] || 0;
-        var timeoutS = bot.pollTimeout || CONSTANTS.DEFAULT_POLL_TIMEOUT;
-        var url = buildApiUrl(bot.key, CONSTANTS.GET_UPDATES_ENDPOINT) +
-            '?offset=' + offset +
-            '&timeout=' + timeoutS;
-
-        var userDelay = bot.updateInterval || 0;
-
         function finalize(delay) {
             inFlight[botName] = false;
             scheduleNextPoll(botName, delay);
         }
 
+        // Всё, что может бросить, — внутри try. Раньше getBot и сборка URL
+        // стояли снаружи, и любая их ошибка уходила мимо обработчика прямо
+        // из колбэка таймера: цепочка опроса обрывалась НАВСЕГДА, inFlight
+        // оставался true, бот молча переставал отвечать. Так и случилось,
+        // когда сценарий настроек на минуту исчез при переустановке —
+        // global.TGActionsSettings стал undefined, и getBot бросил TypeError.
+        var bot, offset, timeoutS, url, userDelay;
         try {
+            bot = getBot(botName);
+            offset = pollOffsets[botName] || 0;
+            timeoutS = bot.pollTimeout || CONSTANTS.DEFAULT_POLL_TIMEOUT;
+            url = buildApiUrl(bot.key, CONSTANTS.GET_UPDATES_ENDPOINT) +
+                '?offset=' + offset +
+                '&timeout=' + timeoutS;
+            userDelay = bot.updateInterval || 0;
 
             var now = new Date();
 

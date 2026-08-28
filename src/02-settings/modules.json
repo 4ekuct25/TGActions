@@ -1,0 +1,19 @@
+{
+  "_comment": "Сборка сценария настроек из модулей. Порядок в modules влияет только на читаемость собранного файла; порядок инициализации задан в index.js. stripComments: сценарий вырос до 90% потолка хаба (~47 КБ), а хаб крупные сценарии молча не сохраняет. Шапка banner.js не режется — она в before. Править всё равно нужно в src/, хаб перезапишется при следующей сборке.",
+  "var": "TGActionsSettings",
+  "entry": "TGActionsSettingsIndex",
+  "stripComments": true,
+  "before": [
+    "banner.js"
+  ],
+  "modules": [
+    "actions.js",
+    "visibility.js",
+    "access.js",
+    "discovery.js",
+    "menu.js",
+    "commands.js",
+    "index.js"
+  ],
+  "after": []
+}

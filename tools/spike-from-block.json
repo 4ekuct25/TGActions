@@ -1,0 +1,11 @@
+{
+  "scenarioTemplate": {
+    "name": "SPIKE_FromBlock_TEMP",
+    "desc": "",
+    "active": true,
+    "onStart": true,
+    "sync": false,
+    "data": "{\"targets\":[{\"type\":\"code\",\"code\":\"var A = 21, C = 15;\\nfunction say(m) { try { log.info('SPIKE ' + m); } catch (e) {} }\\n\\n// (a) запись напрямую из блочного сценария\\nvar b0 = Hub.getCharacteristicValue(A, C);\\nsay('[block-direct] before=' + b0);\\nHub.setCharacteristicValue(A, C, !b0);\\nsay('[block-direct] AFTER-SET=' + Hub.getCharacteristicValue(A, C) + ' EXPECTED=' + !b0);\\nHub.setCharacteristicValue(A, C, b0);\\n\\n// (b) через функцию, объявленную в глобальном сценарии - случай TGActions\\ntry { global.SpikeHubAccess.probe('[block-calls-global]'); }\\ncatch (e) { say('[block-calls-global] THREW ' + e); }\\n\\n// (c) таймер, заведённый внутри глобальной функции - случай polling\\ntry { global.SpikeHubAccess.later('[global-timer]'); }\\ncatch (e) { say('[global-timer] THREW ' + e); }\"}]}",
+    "type": "BLOCK"
+  }
+}

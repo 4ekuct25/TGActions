@@ -1,0 +1,1085 @@
+{
+  "rooms": [
+    {
+      "name": "Кухня",
+      "accessories": [
+        {
+          "aId": 19,
+          "name": "Датчик дыма",
+          "services": [
+            {
+              "sId": 17,
+              "type": "Switch",
+              "name": "Сирена",
+              "visible": true,
+              "characteristics": [
+                {
+                  "cId": 19,
+                  "type": "On",
+                  "name": "Включен",
+                  "format": "bool",
+                  "min": null,
+                  "max": null,
+                  "step": null,
+                  "value": false
+                }
+              ]
+            },
+            {
+              "sId": 13,
+              "type": "SmokeSensor",
+              "name": "Дым кухня",
+              "visible": true,
+              "characteristics": [
+                {
+                  "cId": 15,
+                  "type": "SmokeDetected",
+                  "name": "Дым",
+                  "format": "int",
+                  "min": null,
+                  "max": null,
+                  "step": null,
+                  "value": 0
+                }
+              ]
+            },
+            {
+              "sId": 1,
+              "type": "AccessoryInformation",
+              "name": "Информация об аксессуаре",
+              "visible": true,
+              "characteristics": [
+                {
+                  "cId": 4,
+                  "type": "Identify",
+                  "name": "Идентифицировать",
+                  "format": "bool",
+                  "min": null,
+                  "max": null,
+                  "step": null,
+                  "value": false
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Гостиная",
+      "accessories": [
+        {
+          "aId": 7,
+          "name": "Лампа над столом левая",
+          "services": [
+            {
+              "sId": 13,
+              "type": "Lightbulb",
+              "name": "Лампа над столом левая",
+              "visible": true,
+              "characteristics": [
+                {
+                  "cId": 15,
+                  "type": "On",
+                  "name": "Включен",
+                  "format": "bool",
+                  "min": null,
+                  "max": null,
+                  "step": null,
+                  "value": false
+                },
+                {
+                  "cId": 16,
+                  "type": "Brightness",
+                  "name": "Яркость",
+                  "format": "int",
+                  "min": 0,
+                  "max": 100,
+                  "step": 1,
+                  "value": 100
+                },
+                {
+                  "cId": 19,
+                  "type": "ColorTemperature",
+                  "name": "Цветовая температура",
+                  "format": "int",
+                  "min": 50,
+                  "max": 400,
+                  "step": 1,
+                  "value": 189
+                },
+                {
+                  "cId": 17,
+                  "type": "Hue",
+                  "name": "Оттенок",
+                  "format": "float",
+                  "min": 0,
+                  "max": 360,
+                  "step": 1,
+                  "value": 231
+                },
+                {
+                  "cId": 18,
+                  "type": "Saturation",
+                  "name": "Насыщенность",
+                  "format": "float",
+                  "min": 0,
+                  "max": 100,
+                  "step": 1,
+                  "value": 10
+                }
+              ]
+            },
+            {
+              "sId": 1,
+              "type": "AccessoryInformation",
+              "name": "Информация об аксессуаре",
+              "visible": true,
+              "characteristics": [
+                {
+                  "cId": 4,
+                  "type": "Identify",
+                  "name": "Идентифицировать",
+                  "format": "bool",
+                  "min": null,
+                  "max": null,
+                  "step": null,
+                  "value": false
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "aId": 6,
+          "name": "Лампа над столом правая",
+          "services": [
+            {
+              "sId": 13,
+              "type": "Lightbulb",
+              "name": "Лампа над столом правая",
+              "visible": true,
+              "characteristics": [
+                {
+                  "cId": 15,
+                  "type": "On",
+                  "name": "Включен",
+                  "format": "bool",
+                  "min": null,
+                  "max": null,
+                  "step": null,
+                  "value": false
+                },
+                {
+                  "cId": 16,
+                  "type": "Brightness",
+                  "name": "Яркость",
+                  "format": "int",
+                  "min": 0,
+                  "max": 100,
+                  "step": 1,
+                  "value": 100
+                },
+                {
+                  "cId": 19,
+                  "type": "ColorTemperature",
+                  "name": "Цветовая температура",
+                  "format": "int",
+                  "min": 50,
+                  "max": 400,
+                  "step": 1,
+                  "value": 189
+                },
+                {
+                  "cId": 17,
+                  "type": "Hue",
+                  "name": "Оттенок",
+                  "format": "float",
+                  "min": 0,
+                  "max": 360,
+                  "step": 1,
+                  "value": 231
+                },
+                {
+                  "cId": 18,
+                  "type": "Saturation",
+                  "name": "Насыщенность",
+                  "format": "float",
+                  "min": 0,
+                  "max": 100,
+                  "step": 1,
+                  "value": 10
+                }
+              ]
+            },
+            {
+              "sId": 1,
+              "type": "AccessoryInformation",
+              "name": "Информация об аксессуаре",
+              "visible": true,
+              "characteristics": [
+                {
+                  "cId": 4,
+                  "type": "Identify",
+                  "name": "Идентифицировать",
+                  "format": "bool",
+                  "min": null,
+                  "max": null,
+                  "step": null,
+                  "value": false
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "aId": 44,
+          "name": "Лампочка",
+          "services": [
+            {
+              "sId": 13,
+              "type": "Lightbulb",
+              "name": "Лампа над столом",
+              "visible": true,
+              "characteristics": [
+                {
+                  "cId": 15,
+                  "type": "On",
+                  "name": "Включен",
+                  "format": "bool",
+                  "min": null,
+                  "max": null,
+                  "step": null,
+                  "value": false
+                }
+              ]
+            },
+            {
+              "sId": 1,
+              "type": "AccessoryInformation",
+              "name": "Информация об аксессуаре",
+              "visible": true,
+              "characteristics": [
+                {
+                  "cId": 4,
+                  "type": "Identify",
+                  "name": "Идентифицировать",
+                  "format": "bool",
+                  "min": null,
+                  "max": null,
+                  "step": null,
+                  "value": false
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "aId": 22,
+          "name": "VIOMI Cross 18000BTU",
+          "services": [
+            {
+              "sId": 13,
+              "type": "FanBasic",
+              "name": "Кондиционер гостиная",
+              "visible": true,
+              "characteristics": [
+                {
+                  "cId": 15,
+                  "type": "On",
+                  "name": "Включен",
+                  "format": "bool",
+                  "min": null,
+                  "max": null,
+                  "step": null,
+                  "value": false
+                },
+                {
+                  "cId": 16,
+                  "type": "RotationSpeed",
+                  "name": "Скорость вращения",
+                  "format": "float",
+                  "min": 0,
+                  "max": 100,
+                  "step": 20,
+                  "value": 40
+                }
+              ]
+            },
+            {
+              "sId": 17,
+              "type": "Thermostat",
+              "name": "Режим гостиная",
+              "visible": true,
+              "characteristics": [
+                {
+                  "cId": 22,
+                  "type": "TargetTemperature",
+                  "name": "Целевая температура",
+                  "format": "float",
+                  "min": 16,
+                  "max": 32,
+                  "step": 1,
+                  "value": 25
+                },
+                {
+                  "cId": 20,
+                  "type": "TargetHeatingCoolingState",
+                  "name": "Целевой режим",
+                  "format": "int",
+                  "min": -3,
+                  "max": 3,
+                  "step": 1,
+                  "value": 2
+                },
+                {
+                  "cId": 23,
+                  "type": "TemperatureDisplayUnits",
+                  "name": "Единицы",
+                  "format": "int",
+                  "min": 0,
+                  "max": 1,
+                  "step": 1,
+                  "value": 0
+                },
+                {
+                  "cId": 24,
+                  "type": "C_FanSpeed",
+                  "name": "Скорость вентилятора",
+                  "format": "int",
+                  "min": 0,
+                  "max": 5,
+                  "step": 1,
+                  "value": 2
+                }
+              ]
+            },
+            {
+              "sId": 38,
+              "type": "Lightbulb",
+              "name": "Подсветка",
+              "visible": true,
+              "characteristics": [
+                {
+                  "cId": 40,
+                  "type": "On",
+                  "name": "Включен",
+                  "format": "bool",
+                  "min": null,
+                  "max": null,
+                  "step": null,
+                  "value": true
+                }
+              ]
+            },
+            {
+              "sId": 32,
+              "type": "Switch",
+              "name": "Самоочистка",
+              "visible": true,
+              "characteristics": [
+                {
+                  "cId": 34,
+                  "type": "On",
+                  "name": "Включен",
+                  "format": "bool",
+                  "min": null,
+                  "max": null,
+                  "step": null,
+                  "value": false
+                }
+              ]
+            },
+            {
+              "sId": 1,
+              "type": "AccessoryInformation",
+              "name": "Информация об аксессуаре",
+              "visible": true,
+              "characteristics": [
+                {
+                  "cId": 4,
+                  "type": "Identify",
+                  "name": "Идентифицировать",
+                  "format": "bool",
+                  "min": null,
+                  "max": null,
+                  "step": null,
+                  "value": false
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "aId": 20,
+          "name": "Сигнализация",
+          "services": [
+            {
+              "sId": 13,
+              "type": "SecuritySystem",
+              "name": "Сигнализация",
+              "visible": true,
+              "characteristics": [
+                {
+                  "cId": 16,
+                  "type": "SecuritySystemTargetState",
+                  "name": "Целевой режим",
+                  "format": "int",
+                  "min": 0,
+                  "max": 3,
+                  "step": 1,
+                  "value": 3
+                }
+              ]
+            },
+            {
+              "sId": 1,
+              "type": "AccessoryInformation",
+              "name": "Информация об аксессуаре",
+              "visible": true,
+              "characteristics": [
+                {
+                  "cId": 4,
+                  "type": "Identify",
+                  "name": "Идентифицировать",
+                  "format": "bool",
+                  "min": null,
+                  "max": null,
+                  "step": null,
+                  "value": false
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "aId": 8,
+          "name": "Датчик климата",
+          "services": [
+            {
+              "sId": 13,
+              "type": "TemperatureSensor",
+              "name": "Температура гостиная",
+              "visible": true,
+              "characteristics": [
+                {
+                  "cId": 15,
+                  "type": "CurrentTemperature",
+                  "name": "Температура",
+                  "format": "float",
+                  "min": null,
+                  "max": null,
+                  "step": null,
+                  "value": 24.8
+                }
+              ]
+            },
+            {
+              "sId": 16,
+              "type": "HumiditySensor",
+              "name": "Влажность гостиная",
+              "visible": true,
+              "characteristics": [
+                {
+                  "cId": 18,
+                  "type": "CurrentRelativeHumidity",
+                  "name": "Влажность",
+                  "format": "float",
+                  "min": null,
+                  "max": null,
+                  "step": null,
+                  "value": 50
+                }
+              ]
+            },
+            {
+              "sId": 1,
+              "type": "AccessoryInformation",
+              "name": "Информация об аксессуаре",
+              "visible": true,
+              "characteristics": [
+                {
+                  "cId": 4,
+                  "type": "Identify",
+                  "name": "Идентифицировать",
+                  "format": "bool",
+                  "min": null,
+                  "max": null,
+                  "step": null,
+                  "value": false
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Новая комната",
+      "accessories": [
+        {
+          "aId": 34,
+          "name": "IPC113065319",
+          "services": [
+            {
+              "sId": 22,
+              "type": "CameraControl",
+              "name": "Управление камерой",
+              "visible": true,
+              "characteristics": [
+                {
+                  "cId": 24,
+                  "type": "On",
+                  "name": "Включен",
+                  "format": "bool",
+                  "min": null,
+                  "max": null,
+                  "step": null,
+                  "value": false
+                },
+                {
+                  "cId": 27,
+                  "type": "OpticalZoom",
+                  "name": "OpticalZoom",
+                  "format": "float",
+                  "min": 0,
+                  "max": 100,
+                  "step": 1,
+                  "value": 0
+                }
+              ]
+            },
+            {
+              "sId": 13,
+              "type": "CameraRTPStreamManagement",
+              "name": "Управление потоком камеры",
+              "visible": true,
+              "characteristics": [
+                {
+                  "cId": 15,
+                  "type": "Active",
+                  "name": "Активно",
+                  "format": "int",
+                  "min": 0,
+                  "max": 1,
+                  "step": 1,
+                  "value": 1
+                },
+                {
+                  "cId": 17,
+                  "type": "SelectedRTPStreamConfiguration",
+                  "name": "RTP",
+                  "format": "string",
+                  "min": null,
+                  "max": null,
+                  "step": null,
+                  "value": "TLV"
+                },
+                {
+                  "cId": 18,
+                  "type": "SetupEndpoints",
+                  "name": "Эндпойнты",
+                  "format": "string",
+                  "min": null,
+                  "max": null,
+                  "step": null,
+                  "value": "TLV"
+                }
+              ]
+            },
+            {
+              "sId": 1,
+              "type": "AccessoryInformation",
+              "name": "Информация об аксессуаре",
+              "visible": true,
+              "characteristics": [
+                {
+                  "cId": 4,
+                  "type": "Identify",
+                  "name": "Идентифицировать",
+                  "format": "bool",
+                  "min": null,
+                  "max": null,
+                  "step": null,
+                  "value": false
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Кабинет",
+      "accessories": [
+        {
+          "aId": 39,
+          "name": "Выключатели",
+          "services": [
+            {
+              "sId": 13,
+              "type": "Switch",
+              "name": "Свет Даша",
+              "visible": true,
+              "characteristics": [
+                {
+                  "cId": 15,
+                  "type": "On",
+                  "name": "Включен",
+                  "format": "bool",
+                  "min": null,
+                  "max": null,
+                  "step": null,
+                  "value": false
+                }
+              ]
+            },
+            {
+              "sId": 16,
+              "type": "Switch",
+              "name": "Свет Сергей",
+              "visible": true,
+              "characteristics": [
+                {
+                  "cId": 18,
+                  "type": "On",
+                  "name": "Включен",
+                  "format": "bool",
+                  "min": null,
+                  "max": null,
+                  "step": null,
+                  "value": false
+                }
+              ]
+            },
+            {
+              "sId": 19,
+              "type": "Switch",
+              "name": "Свет Диван",
+              "visible": true,
+              "characteristics": [
+                {
+                  "cId": 21,
+                  "type": "On",
+                  "name": "Включен",
+                  "format": "bool",
+                  "min": null,
+                  "max": null,
+                  "step": null,
+                  "value": false
+                }
+              ]
+            },
+            {
+              "sId": 1,
+              "type": "AccessoryInformation",
+              "name": "Информация об аксессуаре",
+              "visible": true,
+              "characteristics": [
+                {
+                  "cId": 4,
+                  "type": "Identify",
+                  "name": "Идентифицировать",
+                  "format": "bool",
+                  "min": null,
+                  "max": null,
+                  "step": null,
+                  "value": false
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "aId": 21,
+          "name": "Ночник",
+          "services": [
+            {
+              "sId": 13,
+              "type": "Lightbulb",
+              "name": "Лампа настольная",
+              "visible": true,
+              "characteristics": [
+                {
+                  "cId": 15,
+                  "type": "On",
+                  "name": "Включен",
+                  "format": "bool",
+                  "min": null,
+                  "max": null,
+                  "step": null,
+                  "value": true
+                },
+                {
+                  "cId": 16,
+                  "type": "Brightness",
+                  "name": "Яркость",
+                  "format": "int",
+                  "min": 0,
+                  "max": 100,
+                  "step": 1,
+                  "value": 100
+                },
+                {
+                  "cId": 17,
+                  "type": "ColorTemperature",
+                  "name": "Цветовая температура",
+                  "format": "int",
+                  "min": 50,
+                  "max": 400,
+                  "step": 1,
+                  "value": 327
+                }
+              ]
+            },
+            {
+              "sId": 1,
+              "type": "AccessoryInformation",
+              "name": "Информация об аксессуаре",
+              "visible": true,
+              "characteristics": [
+                {
+                  "cId": 4,
+                  "type": "Identify",
+                  "name": "Идентифицировать",
+                  "format": "bool",
+                  "min": null,
+                  "max": null,
+                  "step": null,
+                  "value": false
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "aId": 23,
+          "name": "VIOMI Cross 9000BTU",
+          "services": [
+            {
+              "sId": 13,
+              "type": "FanBasic",
+              "name": "Кондиционер",
+              "visible": true,
+              "characteristics": [
+                {
+                  "cId": 15,
+                  "type": "On",
+                  "name": "Включен",
+                  "format": "bool",
+                  "min": null,
+                  "max": null,
+                  "step": null,
+                  "value": false
+                }
+              ]
+            },
+            {
+              "sId": 17,
+              "type": "Thermostat",
+              "name": "Режим кондиционера",
+              "visible": true,
+              "characteristics": [
+                {
+                  "cId": 22,
+                  "type": "TargetTemperature",
+                  "name": "Целевая температура",
+                  "format": "float",
+                  "min": 16,
+                  "max": 32,
+                  "step": 1,
+                  "value": 23
+                }
+              ]
+            },
+            {
+              "sId": 1,
+              "type": "AccessoryInformation",
+              "name": "Информация об аксессуаре",
+              "visible": true,
+              "characteristics": [
+                {
+                  "cId": 4,
+                  "type": "Identify",
+                  "name": "Идентифицировать",
+                  "format": "bool",
+                  "min": null,
+                  "max": null,
+                  "step": null,
+                  "value": false
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Бойлерная",
+      "accessories": [
+        {
+          "aId": 9,
+          "name": "Кран воды",
+          "services": [
+            {
+              "sId": 13,
+              "type": "Valve",
+              "name": "Кран",
+              "visible": true,
+              "characteristics": [
+                {
+                  "cId": 15,
+                  "type": "Active",
+                  "name": "Активно",
+                  "format": "int",
+                  "min": 0,
+                  "max": 1,
+                  "step": 1,
+                  "value": 1
+                }
+              ]
+            },
+            {
+              "sId": 1,
+              "type": "AccessoryInformation",
+              "name": "Информация об аксессуаре",
+              "visible": true,
+              "characteristics": [
+                {
+                  "cId": 4,
+                  "type": "Identify",
+                  "name": "Идентифицировать",
+                  "format": "bool",
+                  "min": null,
+                  "max": null,
+                  "step": null,
+                  "value": false
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "aId": 18,
+          "name": "Розетка греющий кабель",
+          "services": [
+            {
+              "sId": 13,
+              "type": "Outlet",
+              "name": "Розетка",
+              "visible": true,
+              "characteristics": [
+                {
+                  "cId": 15,
+                  "type": "On",
+                  "name": "Включен",
+                  "format": "bool",
+                  "min": null,
+                  "max": null,
+                  "step": null,
+                  "value": false
+                }
+              ]
+            },
+            {
+              "sId": 1,
+              "type": "AccessoryInformation",
+              "name": "Информация об аксессуаре",
+              "visible": true,
+              "characteristics": [
+                {
+                  "cId": 4,
+                  "type": "Identify",
+                  "name": "Идентифицировать",
+                  "format": "bool",
+                  "min": null,
+                  "max": null,
+                  "step": null,
+                  "value": false
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Детские комнаты",
+      "accessories": [
+        {
+          "aId": 13,
+          "name": "Лампа Агата",
+          "services": [
+            {
+              "sId": 13,
+              "type": "Lightbulb",
+              "name": "Лампочка",
+              "visible": true,
+              "characteristics": [
+                {
+                  "cId": 15,
+                  "type": "On",
+                  "name": "Включен",
+                  "format": "bool",
+                  "min": null,
+                  "max": null,
+                  "step": null,
+                  "value": false
+                },
+                {
+                  "cId": 16,
+                  "type": "Brightness",
+                  "name": "Яркость",
+                  "format": "int",
+                  "min": 0,
+                  "max": 100,
+                  "step": 1,
+                  "value": 50
+                }
+              ]
+            },
+            {
+              "sId": 1,
+              "type": "AccessoryInformation",
+              "name": "Информация об аксессуаре",
+              "visible": true,
+              "characteristics": [
+                {
+                  "cId": 4,
+                  "type": "Identify",
+                  "name": "Идентифицировать",
+                  "format": "bool",
+                  "min": null,
+                  "max": null,
+                  "step": null,
+                  "value": false
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "aId": 14,
+          "name": "Лампа Арина",
+          "services": [
+            {
+              "sId": 13,
+              "type": "Lightbulb",
+              "name": "Лампочка",
+              "visible": true,
+              "characteristics": [
+                {
+                  "cId": 15,
+                  "type": "On",
+                  "name": "Включен",
+                  "format": "bool",
+                  "min": null,
+                  "max": null,
+                  "step": null,
+                  "value": false
+                },
+                {
+                  "cId": 16,
+                  "type": "Brightness",
+                  "name": "Яркость",
+                  "format": "int",
+                  "min": 0,
+                  "max": 100,
+                  "step": 1,
+                  "value": 25
+                }
+              ]
+            },
+            {
+              "sId": 1,
+              "type": "AccessoryInformation",
+              "name": "Информация об аксессуаре",
+              "visible": true,
+              "characteristics": [
+                {
+                  "cId": 4,
+                  "type": "Identify",
+                  "name": "Идентифицировать",
+                  "format": "bool",
+                  "min": null,
+                  "max": null,
+                  "step": null,
+                  "value": false
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Улица",
+      "accessories": [
+        {
+          "aId": 49,
+          "name": "Газонокосилка 2",
+          "services": [
+            {
+              "sId": 13,
+              "type": "Switch",
+              "name": "Кошение mow",
+              "visible": true,
+              "characteristics": [
+                {
+                  "cId": 15,
+                  "type": "On",
+                  "name": "Включен",
+                  "format": "bool",
+                  "min": null,
+                  "max": null,
+                  "step": null,
+                  "value": false
+                }
+              ]
+            },
+            {
+              "sId": 16,
+              "type": "Switch",
+              "name": "На базу dock",
+              "visible": true,
+              "characteristics": [
+                {
+                  "cId": 18,
+                  "type": "On",
+                  "name": "Включен",
+                  "format": "bool",
+                  "min": null,
+                  "max": null,
+                  "step": null,
+                  "value": false
+                }
+              ]
+            },
+            {
+              "sId": 1,
+              "type": "AccessoryInformation",
+              "name": "Информация об аксессуаре",
+              "visible": true,
+              "characteristics": [
+                {
+                  "cId": 4,
+                  "type": "Identify",
+                  "name": "Идентифицировать",
+                  "format": "bool",
+                  "min": null,
+                  "max": null,
+                  "step": null,
+                  "value": false
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Пустая комната",
+      "accessories": []
+    }
+  ]
+}

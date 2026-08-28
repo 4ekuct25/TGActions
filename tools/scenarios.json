@@ -7,7 +7,8 @@
     },
     {
       "export": "2. Telegram for Sprut. Part 1. ReadMe and Settings (2).json",
-      "slug": "02-settings"
+      "slug": "02-settings",
+      "layout": "modules"
     },
     {
       "export": "3. Telegram for Sprut. Part 2. Engine.json",

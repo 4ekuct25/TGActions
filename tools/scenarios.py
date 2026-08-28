@@ -115,7 +115,56 @@ def split(export_name, slug, read):
     return files
 
 
-def assemble_modules(slug, read):
+def strip_comments(text):
+    """Убирает комментарии, занимающие строку целиком.
+
+    Хаб молча не сохраняет крупные сценарии, а комментарии здесь — больше трети
+    объёма. В репозитории остаётся документированный исходник, в хаб уезжает та
+    же логика без комментариев.
+
+    Правится только целая строка: строки вида `// …` и блоки `/* … */`,
+    начинающиеся со строки. Часть строки не трогается никогда — именно на этом
+    ломаются регулярочные «вырезалки», потому что в коде есть литералы вроде
+    /^-?\\d+$/ и '//' внутри строк ('https://…'). Хвостовые комментарии
+    (`code(); // пояснение`) остаются: их объём мал, а разбор опасен.
+
+    Гарантия даётся не аккуратностью правил, а проверкой: собранный скрипт
+    прогоняется через node --check и A/B на tools/engine-harness.js.
+    """
+    out = []
+    in_block = False
+    for line in text.split("\n"):
+        stripped = line.strip()
+        if in_block:
+            if "*/" in stripped:
+                in_block = False
+                # Хвост после закрытия — это код, строку целиком выкинуть нельзя.
+                tail = stripped.split("*/", 1)[1].strip()
+                if tail:
+                    out.append(line)
+            continue
+        if stripped.startswith("//"):
+            continue
+        if stripped.startswith("/*"):
+            if "*/" in stripped:
+                tail = stripped.split("*/", 1)[1].strip()
+                if tail:
+                    out.append(line)
+                continue
+            in_block = True
+            continue
+        out.append(line)
+
+    # Схлопываем подряд идущие пустые строки, оставшиеся от вырезанных блоков.
+    result = []
+    for line in out:
+        if not line.strip() and result and not result[-1].strip():
+            continue
+        result.append(line)
+    return "\n".join(result)
+
+
+def assemble_modules(slug, read, with_local=False):
     """src/<slug>/ -> текст скрипта сценария.
 
     before-файлы кладутся вне IIFE, modules — внутрь, затем вызывается entry.
@@ -125,7 +174,21 @@ def assemble_modules(slug, read):
     spec = json.loads(read(f"src/{slug}/modules.json").decode("utf-8"))
 
     def part(name):
+        if name == "local.js":
+            return (ROOT / "src" / slug / name).read_bytes().decode("utf-8").rstrip("\n")
         return read(f"src/{slug}/{name}").decode("utf-8").rstrip("\n")
+
+    # Комментарии режутся только в коде модулей. before/after (шапка «читайте
+    # README» и блок примеров) остаются: их читает человек, открывший сценарий
+    # в хабе, и весят они немного.
+    strip = bool(spec.get("stripComments"))
+
+    modules = list(spec["modules"])
+    # local.js не отслеживается git и подмешивается только в сборку для хаба.
+    # Читается всегда с диска, даже в режиме --index: в индексе его нет и быть
+    # не должно.
+    if with_local and (ROOT / "src" / slug / "local.js").is_file():
+        modules.insert(0, "local.js")
 
     out = [part(name) for name in spec["before"]]
     out.append(
@@ -133,9 +196,10 @@ def assemble_modules(slug, read):
         f"при следующей сборке (tools/scenarios.py build). */"
     )
     out.append(f"var {spec['var']} = (function () {{")
-    for name in spec["modules"]:
+    for name in modules:
         out.append(f"// ───────────────────────────  {name}  ───────────────────────────")
-        out.append(part(name))
+        body = part(name)
+        out.append(strip_comments(body) if strip else body)
         out.append("")
     out.append(f"return {spec['entry']}();")
     out.append("})();")
@@ -143,7 +207,7 @@ def assemble_modules(slug, read):
     return "\n".join(out) + "\n"
 
 
-def join(export_name, slug, read, layout="file"):
+def join(export_name, slug, read, layout="file", with_local=False):
     """src/ -> байты экспорта (с сохранением всех полей, кроме data)."""
     export = json.loads(read(export_name).decode("utf-8"))
     template = export["scenarioTemplate"]
@@ -152,7 +216,7 @@ def join(export_name, slug, read, layout="file"):
         return read(f"src/{name}").decode("utf-8")
 
     if layout == "modules":
-        template["data"] = assemble_modules(slug, read)
+        template["data"] = assemble_modules(slug, read, with_local)
     elif template["type"] != "BLOCK":
         template["data"] = src(f"{slug}.js")
     else:
@@ -194,6 +258,9 @@ def cmd_extract(_args):
 
 
 def cmd_build(args):
+    if getattr(args, "local", False):
+        return build_local()
+
     read = read_index if getattr(args, "index", False) else read_worktree
     where = "индексе" if read is read_index else "рабочем дереве"
 
@@ -221,7 +288,72 @@ def cmd_build(args):
         return 0
 
     print("обновлено: " + (", ".join(changed) if changed else "нечего — всё совпадает"))
+    report_sizes(read)
     return 0
+
+
+# Потолок из прошлых проектов по этому же хабу: 61 КБ сценарий уже не доезжает,
+# заведомо доезжали сборки до ~47 КБ. Хаб при этом гасит значок «сохранить»,
+# как будто всё прошло, поэтому предупреждать надо заранее.
+HUB_SIZE_WARN = 47000
+
+
+DIST = ROOT / "dist"
+
+
+def build_local():
+    """Сборка для импорта в хаб: с подставленными секретами, в dist/.
+
+    Отслеживаемые экспорты в корне при этом НЕ трогаются — они остаются с
+    плейсхолдерами. Иначе токен уехал бы в публичную историю репозитория.
+    """
+    DIST.mkdir(exist_ok=True)
+    written = []
+    missing = []
+    for s in load_map(read_worktree):
+        has_local = (SRC / s["slug"] / "local.js").is_file()
+        if s["layout"] == "modules" and not has_local and (SRC / s["slug"] / "local.example.js").is_file():
+            missing.append(s["slug"])
+        built = join(s["export"], s["slug"], read_worktree, s["layout"], with_local=True)
+        (DIST / s["export"]).write_bytes(built)
+        written.append(s["export"])
+
+    print("собрано в dist/ (импортировать в хаб именно это):")
+    for name in written:
+        size = len((DIST / name).read_bytes())
+        print(f"  {size:>7} байт  {name}")
+
+    if missing:
+        print(
+            "\nВНИМАНИЕ: нет src/" + "/local.js, нет src/".join(missing) + "/local.js — "
+            "сборка ушла с плейсхолдерами.\n"
+            "Скопируйте образец: cp src/02-settings/local.example.js src/02-settings/local.js",
+            file=sys.stderr,
+        )
+        return 1
+
+    # Предупреждаем, если в сборке для хаба остались незаполненные значения:
+    # молча уехавший плейсхолдер выглядит как рабочая конфигурация.
+    leaked = [
+        n for n in written
+        if "Заполнить" in (DIST / n).read_text(encoding="utf-8")
+    ]
+    if leaked:
+        print("\nв сборке остались плейсхолдеры «Заполнить»: " + ", ".join(leaked),
+              file=sys.stderr)
+        print("это нормально, пока не известен id семейной группы — узнать: /who в группе",
+              file=sys.stderr)
+    return 0
+
+
+def report_sizes(read):
+    print("размер data (потолок хаба ~47 КБ, выше сценарий может молча не сохраниться):")
+    for s in load_map(read):
+        data = json.loads(read(s["export"]).decode("utf-8"))["scenarioTemplate"]["data"]
+        size = len(data.encode("utf-8"))
+        pct = size / HUB_SIZE_WARN * 100
+        flag = "  ← БЛИЗКО К ПОТОЛКУ" if pct >= 80 else ""
+        print(f"  {size:>7} байт  {pct:>5.0f}%  {s['export']}{flag}")
 
 
 def main():
@@ -230,9 +362,13 @@ def main():
     sub.add_parser("extract", help="*.json -> src/").set_defaults(
         func=cmd_extract, check=False
     )
-    sub.add_parser("build", help="src/ -> *.json").set_defaults(
-        func=cmd_build, check=False
+    build = sub.add_parser("build", help="src/ -> *.json")
+    build.add_argument(
+        "--local",
+        action="store_true",
+        help="собрать для хаба с секретами из local.js в dist/ (в git не попадает)",
     )
+    build.set_defaults(func=cmd_build, check=False)
     check = sub.add_parser("check", help="сверить *.json с src/ без записи")
     check.add_argument(
         "--index",
