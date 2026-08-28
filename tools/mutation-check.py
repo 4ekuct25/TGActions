@@ -91,6 +91,29 @@ MUTATIONS = [
         "return CONSTANTS.API_URL_BASE + '/bot' + botKey + path;",
         "return CONSTANTS.API_URL_BASE + '/bot/' + botKey + path;",
     ),
+    # Разворот алиасов _default: без него null-аргументы дают /botundefined/…
+    # и chat_id='chatName1' (см. шаги «…(null, null)» в стенде).
+    (
+        "helpers.js",
+        "var key = (name === null || name === undefined) ? bots._default : name;",
+        "var key = name;",
+    ),
+    (
+        "helpers.js",
+        "var key = (name === null || name === undefined) ? chats._default : name;",
+        "var key = name;",
+    ),
+    # Значения описаний по умолчанию из настроек и защита от пустой строки.
+    (
+        "bot-meta.js",
+        "bot.description || settings.botDescription",
+        "bot.description",
+    ),
+    (
+        "bot-meta.js",
+        "if (shortDescription) {",
+        "if (true) {",
+    ),
     ("commands.js", "if (commandsRegistered[botName]) {", "if (false) {"),
     # Без botName обработчик кнопки не может ответить в тот же чат.
     ("handlers.js", "cq.botName = botName;", "cq.botName = null;"),

@@ -55,6 +55,13 @@ function TGActionsSettingsIndex() {
     }
 
     return {
+        // Описания по умолчанию для setBotMeta: движок берёт их, если у бота
+        // ниже не заданы description / shortDescription. Раньше на этой ветке
+        // читались свободные глобальные BOT_DESCRIPTION / BOT_SHORT_DESCRIPTION,
+        // нигде не объявленные, — то есть ReferenceError.
+        // Лимиты Telegram: описание ≤ 512 символов, короткое ≤ 120.
+        botDescription: 'Управление умным домом на базе Sprut.hub',
+        botShortDescription: 'Умный дом',
         bots: {
             _default: 'home',
             home: {

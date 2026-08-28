@@ -32,6 +32,10 @@ const SENDER = { id: 555001, username: 'family_member', first_name: 'Анони�
 
 // ─────────────────────────────  Фикстура настроек  ─────────────────────────
 const settings = {
+    // Значения по умолчанию для setBotMeta: боты без description/shortDescription
+    // должны брать их отсюда, а не из свободных глобальных переменных.
+    botDescription: 'описание из настроек',
+    botShortDescription: 'коротко из настроек',
     bots: {
         _default: 'botName1',
         // pollTimeout намеренно не задан: так исполняется ветка с
@@ -41,7 +45,12 @@ const settings = {
             description: 'desc',
             shortDescription: 'short',
             updateInterval: 0
-        }
+        },
+        // Описаний нет: исполняется ветка «подставить значения из настроек».
+        botName2: { key: 'TESTKEY2', updateInterval: 0 },
+        // Тот же случай, но настройки для него будут временно сняты:
+        // исполняется ветка «нечего ставить, пропускаем вызов».
+        botName3: { key: 'TESTKEY3', updateInterval: 0 }
     },
     chats: {
         _default: 'chatName1',
@@ -356,5 +365,67 @@ step('неизвестный чат', function () {
     TG.sendSimpleMessage('botName1', 'нетТакогоЧата', 'привет');
 });
 step('остаток таймеров', function () { flush(5); });
+
+// ───────────────  null-аргументы: bots._default / chats._default  ───────────
+// _default в настройках — АЛИАС ('botName1' / 'chatName1'), а не конфиг и не
+// chat_id. Если его не развернуть, в URL уезжает /botundefined/…, а chat_id
+// становится строкой 'chatName1'. Ниже — вызовы ровно того вида, который
+// обещан в README (§3.1, §3.2).
+step('sendSimpleMessage(null, null)', function () {
+    TG.sendSimpleMessage(null, null, 'бот и чат по умолчанию');
+});
+step('sendSimpleMessage(undefined, undefined)', function () {
+    TG.sendSimpleMessage(undefined, undefined, 'аргументы не переданы');
+});
+step('sendInteractiveMessage(null, null)', function () {
+    TG.sendInteractiveMessage(null, null, 'yesNo', 'Выберите');
+});
+step('sendReplyKeyboard(null, null)', function () {
+    TG.sendReplyKeyboard(null, null, 'mainMenu', 'Меню');
+});
+step('removeReplyKeyboard(null, null)', function () {
+    TG.removeReplyKeyboard(null, null, 'снято');
+});
+step('null-бот при живом имени чата', function () {
+    TG.sendSimpleMessage(null, 'chatName2', 'смешанный вызов');
+});
+step('bots._default указывает в никуда', function () {
+    settings.bots._default = 'нетТакогоБота';
+    try {
+        TG.sendSimpleMessage(null, null, 'привет');
+    } finally {
+        settings.bots._default = 'botName1';
+    }
+});
+step('chats._default указывает в никуда', function () {
+    settings.chats._default = 'нетТакогоЧата';
+    try {
+        TG.sendSimpleMessage(null, null, 'привет');
+    } finally {
+        settings.chats._default = 'chatName1';
+    }
+});
+
+// ──────────────────  setBotMeta без описаний у самого бота  ─────────────────
+// Раньше здесь были свободные BOT_DESCRIPTION / BOT_SHORT_DESCRIPTION —
+// ReferenceError вылетал до try и убивал registerBotCommands целиком.
+step('setBotMeta: описания из настроек', function () {
+    TG.startPolling('botName2');
+    TG.stopPolling('botName2');
+});
+step('setBotMeta: описаний нет нигде', function () {
+    const savedD = settings.botDescription;
+    const savedSD = settings.botShortDescription;
+    delete settings.botDescription;
+    delete settings.botShortDescription;
+    try {
+        TG.startPolling('botName3');
+        TG.stopPolling('botName3');
+    } finally {
+        settings.botDescription = savedD;
+        settings.botShortDescription = savedSD;
+    }
+});
+step('остаток таймеров (после null-сценария)', function () { flush(5); });
 
 process.stdout.write(JSON.stringify(trace, null, 2) + '\n');

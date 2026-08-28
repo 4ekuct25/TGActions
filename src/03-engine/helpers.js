@@ -9,37 +9,41 @@ function TGActionsHelpers(ns) {
 
     /**
      * Возвращает конфиг бота по имени.
+     *
+     * `bots._default` — это АЛИАС (имя бота), а не конфиг, поэтому при
+     * name === null/undefined имя сначала разворачивается через него,
+     * и только потом берётся конфиг.
+     *
      * @throws Error, если не найден.
      */
     function getBot(name) {
-        var bot = global.TGActionsSettings.bots[name];
-        if (name === null) {
-            bot = global.TGActionsSettings.bots._default;
-            return bot;
-        }
-        if (!bot) {
-            _logger.error('getBot: Bot {} not found', name);
-            throw new Error('Bot "' + name + '" not found');
+        var bots = global.TGActionsSettings.bots;
+        var key = (name === null || name === undefined) ? bots._default : name;
+        var bot = bots[key];
+        if (!bot || typeof bot !== 'object') {
+            _logger.error('getBot: Bot {} not found', key);
+            throw new Error('Bot "' + key + '" not found');
         }
         return bot;
     }
 
-    /** Возвращает chat_id по алиасу или числу. */
+    /**
+     * Возвращает chat_id по алиасу или числу.
+     *
+     * `chats._default` — тоже алиас (имя чата), а не chat_id: при
+     * name === null/undefined разворачиваем его до именованного чата.
+     */
     function getChat(name) {
-        var chatObj;
-        if (name === null) {
-            chatObj = global.TGActionsSettings.chats._default;
-            return chatObj;
+        var chats = global.TGActionsSettings.chats;
+        var key = (name === null || name === undefined) ? chats._default : name;
+        if (chats.hasOwnProperty(key)) {
+            return chats[key];
         }
-        if (global.TGActionsSettings.chats.hasOwnProperty(name)) {
-            chatObj = global.TGActionsSettings.chats[name]
-            return chatObj;
+        if (/^-?\d+$/.test(String(key))) {
+            return String(key);
         }
-        if (/^-?\d+$/.test(String(name))) {
-            return String(name);
-        }
-        _logger.error('getChat: Chat {} not found', name);
-        throw new Error('Chat "' + name + '" not found');
+        _logger.error('getChat: Chat {} not found', key);
+        throw new Error('Chat "' + key + '" not found');
     }
 
     /** Собирает URL для запроса Telegram Bot API. */

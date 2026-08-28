@@ -75,8 +75,13 @@ global.TGActions.stopPolling('botName1');
 ### 3.1. Боты (`bots`)
 
 ```js
+// Описания по умолчанию: подставляются, если у бота ниже
+// не заданы description / shortDescription
+botDescription: 'Управление умным домом на базе Sprut.hub',
+botShortDescription: 'Умный дом',
+
 bots: {
-    _default: 'botName1',   // используется, если botName == null
+    _default: 'botName1',   // ИМЯ бота, используется, если botName == null
     botName1: {
         key: '123456:ABC-DEF…', // токен из @BotFather
         description: 'Бот автоматизации умного дома',
@@ -89,18 +94,30 @@ bots: {
 
 * **key** — обязательный токен бота.
 * **autoStart** — если `true`, `TGActions.startPolling()` вызовется при запуске хаба
+* **\_default** — это *имя* бота, а не его конфиг: движок сначала разворачивает
+  алиас, потом берёт `bots[имя]`. Если алиас указывает в никуда — ошибка
+  `Bot "…" not found`, а не молчаливая отправка с пустым токеном.
+* **botDescription / botShortDescription** — описания по умолчанию, движок
+  читает их из объекта настроек (`src/02-settings/index.js`). Если описание не
+  задано ни у бота, ни здесь — движок пропускает вызов `setMyDescription`
+  (пустая строка в Telegram стёрла бы описание) и пишет предупреждение в лог.
+  Лимиты Telegram: описание ≤ 512 символов, короткое ≤ 120.
 
 ### 3.2. Чаты (`chats`)
 
 ```js
 chats: {
-    _default: 'chatName1', // используется, если chatName == null
+    _default: 'chatName1', // ИМЯ чата, используется, если chatName == null
     chatName1: '399310593',  // chat_id (числом или строкой)
     chatName2: '-1009876543210'
 }
 ```
 
 Все входящие сообщения из chat\_id, **не** присутствующих в этом списке, игнорируются.
+
+`_default`, как и у ботов, — *имя* чата, а не `chat_id`: движок разворачивает
+алиас и подставляет `chats[имя]`. Помимо имени в качестве `chatName` можно
+передать сам `chat_id` числом или строкой.
 
 ### 3.3. Reply-клавиатуры (`replyKeyboardSets`)
 
@@ -163,6 +180,14 @@ botCommands: {
 | `sendInteractiveMessage(bot, chat, setName, text [, opts])` | Inline-кнопки       | `sendInteractiveMessage('bot','chat','yesNo','?');`    |
 | `sendReplyKeyboard(bot, chat, setName, text [, opts])`      | Reply-клавиатура    | `sendReplyKeyboard('bot','chat','mainMenu','Выбор:');` |
 | `removeReplyKeyboard(bot, chat, text [, opts])`             | Спрятать клавиатуру | `removeReplyKeyboard('bot','chat','👍');`              |
+
+Вместо имени бота и чата можно передать `null` (или не передать вовсе) —
+подставятся `bots._default` и `chats._default`:
+
+```js
+TGActions.sendSimpleMessage(null, null, 'Сообщение боту и в чат по умолчанию');
+TGActions.sendSimpleMessage(null, 'chatName2', 'Бот по умолчанию, чат явный');
+```
 
 **Опции (`opts`)**
 
@@ -723,6 +748,12 @@ python3 tools/mutation-check.py
 
 Фикстура хаба — `tools/fixtures/hub-usadba.json`, снята с живого хаба «Усадьба».
 Она нужна, чтобы проверять отбор устройств и политику доступа без самого хаба.
+
+Сценарий стенда движка заканчивается блоком с `null`-аргументами (`bots._default` /
+`chats._default`, включая случай «алиас указывает в никуда») и вызовом
+`setBotMeta` для бота без собственных описаний. Эти шаги идут **после**
+основного сценария: так трасса основной части остаётся сравнимой с ранее
+снятой.
 
 Стенд полезен как A/B: снять трассу до правки и после, они должны совпасть,
 если правка задумана как рефакторинг без смены поведения. Одна ветка стендом
