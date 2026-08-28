@@ -115,6 +115,55 @@ def split(export_name, slug, read):
     return files
 
 
+def strip_comments(text):
+    """Убирает комментарии, занимающие строку целиком.
+
+    Хаб молча не сохраняет крупные сценарии, а комментарии здесь — больше трети
+    объёма. В репозитории остаётся документированный исходник, в хаб уезжает та
+    же логика без комментариев.
+
+    Правится только целая строка: строки вида `// …` и блоки `/* … */`,
+    начинающиеся со строки. Часть строки не трогается никогда — именно на этом
+    ломаются регулярочные «вырезалки», потому что в коде есть литералы вроде
+    /^-?\\d+$/ и '//' внутри строк ('https://…'). Хвостовые комментарии
+    (`code(); // пояснение`) остаются: их объём мал, а разбор опасен.
+
+    Гарантия даётся не аккуратностью правил, а проверкой: собранный скрипт
+    прогоняется через node --check и A/B на tools/engine-harness.js.
+    """
+    out = []
+    in_block = False
+    for line in text.split("\n"):
+        stripped = line.strip()
+        if in_block:
+            if "*/" in stripped:
+                in_block = False
+                # Хвост после закрытия — это код, строку целиком выкинуть нельзя.
+                tail = stripped.split("*/", 1)[1].strip()
+                if tail:
+                    out.append(line)
+            continue
+        if stripped.startswith("//"):
+            continue
+        if stripped.startswith("/*"):
+            if "*/" in stripped:
+                tail = stripped.split("*/", 1)[1].strip()
+                if tail:
+                    out.append(line)
+                continue
+            in_block = True
+            continue
+        out.append(line)
+
+    # Схлопываем подряд идущие пустые строки, оставшиеся от вырезанных блоков.
+    result = []
+    for line in out:
+        if not line.strip() and result and not result[-1].strip():
+            continue
+        result.append(line)
+    return "\n".join(result)
+
+
 def assemble_modules(slug, read):
     """src/<slug>/ -> текст скрипта сценария.
 
@@ -127,6 +176,11 @@ def assemble_modules(slug, read):
     def part(name):
         return read(f"src/{slug}/{name}").decode("utf-8").rstrip("\n")
 
+    # Комментарии режутся только в коде модулей. before/after (шапка «читайте
+    # README» и блок примеров) остаются: их читает человек, открывший сценарий
+    # в хабе, и весят они немного.
+    strip = bool(spec.get("stripComments"))
+
     out = [part(name) for name in spec["before"]]
     out.append(
         f"/* Собрано из src/{slug}/ — правки в этом файле потеряются "
@@ -135,7 +189,8 @@ def assemble_modules(slug, read):
     out.append(f"var {spec['var']} = (function () {{")
     for name in spec["modules"]:
         out.append(f"// ───────────────────────────  {name}  ───────────────────────────")
-        out.append(part(name))
+        body = part(name)
+        out.append(strip_comments(body) if strip else body)
         out.append("")
     out.append(f"return {spec['entry']}();")
     out.append("})();")
@@ -221,7 +276,24 @@ def cmd_build(args):
         return 0
 
     print("обновлено: " + (", ".join(changed) if changed else "нечего — всё совпадает"))
+    report_sizes(read)
     return 0
+
+
+# Потолок из прошлых проектов по этому же хабу: 61 КБ сценарий уже не доезжает,
+# заведомо доезжали сборки до ~47 КБ. Хаб при этом гасит значок «сохранить»,
+# как будто всё прошло, поэтому предупреждать надо заранее.
+HUB_SIZE_WARN = 47000
+
+
+def report_sizes(read):
+    print("размер data (потолок хаба ~47 КБ, выше сценарий может молча не сохраниться):")
+    for s in load_map(read):
+        data = json.loads(read(s["export"]).decode("utf-8"))["scenarioTemplate"]["data"]
+        size = len(data.encode("utf-8"))
+        pct = size / HUB_SIZE_WARN * 100
+        flag = "  ← БЛИЗКО К ПОТОЛКУ" if pct >= 80 else ""
+        print(f"  {size:>7} байт  {pct:>5.0f}%  {s['export']}{flag}")
 
 
 def main():

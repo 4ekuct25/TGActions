@@ -42,6 +42,14 @@ MUTATIONS = [
         "ids[String(k)] = true;",
     ),
     ("handlers.js", "if (btn && btn.text === text) {", "if (btn) {"),
+    # Групповые команды: без отсечения @botname семейный чат не работает вовсе.
+    ("handlers.js", "return at === -1 ? name : name.substring(0, at);", "return name;"),
+    # Проброс автора: на нём держится доступ на уровне человека.
+    (
+        "handlers.js",
+        "ctx.userId = from && from.id !== undefined ? String(from.id) : null;",
+        "ctx.userId = null;",
+    ),
     (
         "helpers.js",
         "return CONSTANTS.API_URL_BASE + '/bot' + botKey + path;",

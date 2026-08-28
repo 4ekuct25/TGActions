@@ -20,6 +20,10 @@ function TGActionsHandlers(ns) {
             _logger.warn('Callback from unauthorized chat {} ignored', cq.message.chat.id);
             return;
         }
+        // Обработчику по-прежнему передаётся сам callback_query — контракт не меняем,
+        // только дополняем его теми же полями автора, что и у команд.
+        withSender(cq, cq.from);
+
         var parts = cq.data.split(':');
         var setName = parts[0];
         var r = +parts[1];
@@ -64,7 +68,7 @@ function TGActionsHandlers(ns) {
         var text = msg.text.trim();
         if (text.charAt(0) === '/') {
             var parts = text.split(' ');
-            var cmdName = parts[0].substring(1).toLowerCase();
+            var cmdName = normalizeCommand(parts[0]);
             var params = parts.slice(1);
             var cmd = global.TGActionsSettings.botCommands[cmdName];
             if (!cmd || typeof cmd.handler !== 'function') {
@@ -72,21 +76,51 @@ function TGActionsHandlers(ns) {
                 return;
             }
             try {
-                cmd.handler({ botName: botName, chatId: msg.chat.id, params: params, message: msg });
+                cmd.handler(withSender({
+                    botName: botName,
+                    chatId: msg.chat.id,
+                    params: params,
+                    message: msg
+                }, msg.from));
             } catch (e) {
                 _logger.error('handleMessage error: {}', e);
             }
             return;
         }
-        if (handleReplyButton(botName, msg.chat.id, text)) {
+        if (handleReplyButton(botName, msg.chat.id, text, msg.from)) {
             return;
         }
     }
 
     /**
+     * '/status' → 'status', '/status@MyHomeBot' → 'status'.
+     *
+     * В группах Telegram дописывает к команде имя бота, и без отсечения суффикса
+     * в botCommands не находится ничего: семейный чат не работал бы вообще.
+     */
+    function normalizeCommand(token) {
+        var name = token.substring(1).toLowerCase();
+        var at = name.indexOf('@');
+        return at === -1 ? name : name.substring(0, at);
+    }
+
+    /**
+     * Дополняет контекст обработчика данными автора сообщения.
+     *
+     * Нужно для доступа на уровне человека, а не только чата: в семейном чате
+     * chat_id один на всех. Поля добавляются, ничего не переименовывается —
+     * обработчики, написанные до этого, продолжают работать.
+     */
+    function withSender(ctx, from) {
+        ctx.userId = from && from.id !== undefined ? String(from.id) : null;
+        ctx.userName = from ? (from.username || from.first_name || null) : null;
+        return ctx;
+    }
+
+    /**
      * Обрабатывает клики по reply‑кнопкам (текстовые сообщения).
      */
-    function handleReplyButton(botName, chatId, text) {
+    function handleReplyButton(botName, chatId, text, from) {
         var setName = _activeReplyMenus[String(chatId)];
         if (!setName) {
             return false;
@@ -103,7 +137,11 @@ function TGActionsHandlers(ns) {
                 if (btn && btn.text === text) {
                     if (typeof btn.handler === 'function') {
                         try {
-                            btn.handler({ botName: botName, chatId: chatId, messageText: text });
+                            btn.handler(withSender({
+                                botName: botName,
+                                chatId: chatId,
+                                messageText: text
+                            }, from));
                         } catch (e) {
                             _logger.error('handleReplyButton handler error: {}', e);
                         }

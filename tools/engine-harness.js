@@ -26,6 +26,10 @@ if (!enginePath) {
 
 const trace = { http: [], logs: [], timers: [], handlers: [] };
 
+// Автор входящих сообщений — участник семейного чата.
+// Объявлено до getUpdatesScript: тот вызывает updatesBatch() на этапе инициализации модуля.
+const SENDER = { id: 555001, username: 'family_member', first_name: 'Аноним' };
+
 // ─────────────────────────────  Фикстура настроек  ─────────────────────────
 const settings = {
     bots: {
@@ -68,7 +72,11 @@ function mark(name) {
             name: name,
             chatId: ctx && ctx.chatId !== undefined ? String(ctx.chatId) : null,
             text: ctx && ctx.messageText ? ctx.messageText : null,
-            params: ctx && ctx.params ? ctx.params : null
+            params: ctx && ctx.params ? ctx.params : null,
+            // Автор сообщения: без этих полей в трассе проброс msg.from не виден,
+            // и A/B показал бы «ничего не изменилось» на изменившемся поведении.
+            userId: ctx && ctx.userId !== undefined ? ctx.userId : '(нет поля)',
+            userName: ctx && ctx.userName !== undefined ? ctx.userName : '(нет поля)'
         });
     };
 }
@@ -122,11 +130,16 @@ function updatesBatch() {
     return JSON.stringify({
         ok: true,
         result: [
-            { update_id: 10, message: { chat: { id: 111 }, text: '/help arg1 arg2' } },
-            { update_id: 11, message: { chat: { id: 111 }, text: 'Меню A' } },
+            { update_id: 10, message: { chat: { id: 111 }, from: SENDER, text: '/help arg1 arg2' } },
+            // В группах Telegram дописывает имя бота к команде. Без этого случая
+            // поломка групповых команд стендом не ловится.
+            { update_id: 100, message: { chat: { id: 111 }, from: SENDER, text: '/status@MyHomeBot' } },
+            // Сообщение вообще без from (служебное/канальное) — проброс автора не должен падать.
+            { update_id: 101, message: { chat: { id: 111 }, text: '/status' } },
+            { update_id: 11, message: { chat: { id: 111 }, from: SENDER, text: 'Меню A' } },
             // Текст ВТОРОЙ кнопки набора: если сверка btn.text отвалится,
             // сработает первая кнопка и трасса разъедется.
-            { update_id: 110, message: { chat: { id: 111 }, text: 'Меню B' } },
+            { update_id: 110, message: { chat: { id: 111 }, from: SENDER, text: 'Меню B' } },
             // Текста нет ни в одной кнопке — ветка «ничего не совпало».
             { update_id: 111, message: { chat: { id: 111 }, text: 'просто текст' } },
             { update_id: 12, message: { chat: { id: 999 }, text: 'чужой чат' } },
@@ -134,6 +147,7 @@ function updatesBatch() {
                 update_id: 13,
                 callback_query: {
                     id: 'cq1',
+                    from: SENDER,
                     data: 'yesNo:0:0:chatName1',
                     message: { chat: { id: 111 } }
                 }
