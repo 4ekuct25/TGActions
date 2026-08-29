@@ -153,6 +153,48 @@ function TGActionsMenu(ns) {
         };
     }
 
+    /** Короткая форма значения для подписи кнопки: место в кнопке дорого. */
+    function shortValue(item, value) {
+        if (item.labels) {
+            var byLabel = item.labels[String(value)];
+            if (byLabel) {
+                return byLabel;
+            }
+        }
+        if (item.kind === 'switch') {
+            return value === item.on ? 'вкл' : 'выкл';
+        }
+        return String(value) + (item.unit ? ' ' + item.unit : '');
+    }
+
+    /** Подпись «Название · текущее значение»; без значения — просто название. */
+    function labelWithValue(item, name) {
+        var value = discovery.readValue(item);
+        if (value === null || value === undefined) {
+            return name;
+        }
+        return name + ' · ' + shortValue(item, value);
+    }
+
+    /**
+     * Кнопка перехода, показывающая текущее состояние устройства.
+     *
+     * text — ГЕТТЕР, и это существенно: меню строится один раз (при загрузке
+     * сценария и по /refresh), а значения меняются постоянно. Движок читает
+     * btn.text в момент отправки сообщения, поэтому значение вычисляется тогда
+     * же и не успевает устареть. Подпись, вшитая при сборке, врала бы.
+     */
+    function stateButton(setName, item, name) {
+        return {
+            get text() {
+                return labelWithValue(item, name);
+            },
+            handler: function (cq) {
+                open(cq, setName, labelWithValue(item, name));
+            }
+        };
+    }
+
     function navButton(setName, label) {
         return {
             text: label,
@@ -200,18 +242,33 @@ function TGActionsMenu(ns) {
                     if (items.length === 1) {
                         var only = actionSet(profile, items[0]);
                         buttonSets[only] = actionButtons(items[0], rSet);
-                        deviceRows.push([navButton(only, deviceName)]);
+                        deviceRows.push([stateButton(only, items[0], deviceName)]);
                         index.actions++;
                         continue;
                     }
 
                     var dSet = deviceSet(profile, items[0]);
                     var actionRows = [];
+                    // Несколько характеристик одного сервиса дают одинаковый
+                    // title («Лампа над столом левая» трижды). Такие — и только
+                    // такие — подписываем именем характеристики, как в хабе.
+                    // Заменять подписи у ВСЕГО устройства нельзя: у кондиционера
+                    // осмысленные имена сервисов («Подсветка», «Самоочистка»)
+                    // превратились бы в четыре одинаковых «Включен».
+                    var display = displayNames(items);
+                    // Пересортировать обязательно: groupByDevice сортировал по
+                    // title, а у одноимённых он общий — на экране порядок
+                    // оказался бы случайным.
+                    items = items.slice().sort(function (a, b) {
+                        var x = display[a.key];
+                        var y = display[b.key];
+                        return x === y ? 0 : (x < y ? -1 : 1);
+                    });
 
                     for (var i = 0; i < items.length; i++) {
                         var aSet = actionSet(profile, items[i]);
                         buttonSets[aSet] = actionButtons(items[i], dSet);
-                        actionRows.push([navButton(aSet, items[i].title)]);
+                        actionRows.push([stateButton(aSet, items[i], display[items[i].key])]);
                         index.actions++;
                     }
                     actionRows.push([navButton(rSet, BACK)]);
@@ -256,22 +313,32 @@ function TGActionsMenu(ns) {
             map[item.device].push(item);
         }
 
-        // Порядок обхода хаба произволен, поэтому сортируем и устройства, и
-        // действия внутри устройства. Раньше сортировались только комнаты и
-        // датчики в /status, а список устройств выезжал как придётся.
-        for (var name in map) {
-            if (map.hasOwnProperty(name)) {
-                map[name].sort(byTitle);
-            }
-        }
+        // Порядок обхода хаба произволен, поэтому устройства сортируем.
+        // Действия внутри устройства сортируются позже, в build, — по ТОМУ
+        // имени, которое реально попадёт на кнопку. Сортировать их и здесь
+        // по title означало бы два места, решающих один вопрос.
         return { map: map, order: sortNames(order) };
     }
 
-    function byTitle(a, b) {
-        if (a.title === b.title) {
-            return 0;
+    /**
+     * Подписи действий устройства: 'aId,cId' -> что показать.
+     *
+     * Имя характеристики берётся только там, где title повторяется внутри
+     * устройства. Уникальные имена сервисов сохраняются — они осмысленнее.
+     */
+    function displayNames(items) {
+        var count = {};
+        var i;
+        for (i = 0; i < items.length; i++) {
+            count[items[i].title] = (count[items[i].title] || 0) + 1;
         }
-        return a.title < b.title ? -1 : 1;
+        var out = {};
+        for (i = 0; i < items.length; i++) {
+            out[items[i].key] = count[items[i].title] > 1
+                ? (items[i].charName || items[i].title)
+                : items[i].title;
+        }
+        return out;
     }
 
     return {

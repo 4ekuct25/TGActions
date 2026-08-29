@@ -82,6 +82,10 @@ function TGActionsDiscovery(ns) {
             room: roomName,
             device: String(accessory.getName()),
             title: title,
+            // Имя самой характеристики («Яркость», «Цветовая температура»).
+            // Нужно, когда у устройства несколько характеристик в ОДНОМ
+            // сервисе: тогда title у них общий и различить их нечем.
+            charName: String(characteristic.getName() || ''),
             type: type
         };
 

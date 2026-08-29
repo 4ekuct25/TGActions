@@ -33,6 +33,9 @@ const STRANGER = '999000999';
 
 const trace = { menu: [], sent: [], writes: [], errors: [] };
 const BACK_LABEL = '\u2039 Назад';
+// Подписи кнопок действий теперь несут текущее значение: «Кондиционер · выкл».
+// Проверки порядка и поиска сравнивают НАЗВАНИЕ, а не название со значением.
+const nameOf = (label) => String(label).split(' · ')[0];
 
 // ─────────────────────────────  Заглушка хаба  ──────────────────────────────
 const fixture = JSON.parse(
@@ -463,7 +466,7 @@ function sortedAscending(list) {
 }
 const navSets = Object.keys(settings.buttonSets).filter((n) => /^[fp][rd]/.test(n));
 const unsorted = navSets.filter((n) => {
-    const labels = labelsOf(n).map((row) => row[0]).filter((s) => s !== BACK_LABEL);
+    const labels = labelsOf(n).map((row) => nameOf(row[0])).filter((s) => s !== BACK_LABEL);
     return !sortedAscending(labels);
 });
 must('устройства и действия в меню отсортированы (наборов: ' + navSets.length + ')',
@@ -474,8 +477,17 @@ must('устройства и действия в меню отсортиров�
 // поведением (нажатие такого устройства открывает экран значений).
 const redundant = Object.keys(settings.buttonSets)
     .filter((n) => /^[fp]d/.test(n))
-    .filter((n) => labelsOf(n).map((r) => r[0]).filter((s) => s !== BACK_LABEL).length < 2);
+    .filter((n) => labelsOf(n).map((r) => nameOf(r[0])).filter((s) => s !== BACK_LABEL).length < 2);
 must('нет экранов устройства с единственным действием', redundant.length === 0);
+// Подписи действий внутри устройства должны различаться, иначе выбирать не из
+// чего: у лампы все характеристики лежат в одном сервисе и дают общий title.
+const ambiguousSets = Object.keys(settings.buttonSets)
+    .filter((n) => /^[fp]d/.test(n))
+    .filter((n) => {
+        const names = labelsOf(n).map((r) => nameOf(r[0])).filter((s) => s !== BACK_LABEL);
+        return new Set(names).size !== names.length;
+    });
+must('подписи действий внутри устройства различимы', ambiguousSets.length === 0);
 
 const single = diag.inventory.actions.filter((a) => {
     const same = diag.inventory.actions.filter(
@@ -489,7 +501,7 @@ if (single) {
         for (let i = 0; i < single.room.length; i++) h = ((h * 33) ^ single.room.charCodeAt(i)) >>> 0;
         return h.toString(36);
     })());
-    const idx = rows.findIndex((r) => r[0] === single.device);
+    const idx = rows.findIndex((r) => nameOf(r[0]) === single.device);
     const before = trace.sent.length;
     click('p' + 'r' + (() => {
         let h = 5381;
@@ -522,6 +534,26 @@ must('в подтверждении есть устройство, когда о
     && textDiffer.indexOf(differing.title) !== -1);
 must('имя не дублируется, когда устройство и действие названы одинаково',
     !!textSame && textSame.split(' · ').length === 2);
+// Подпись кнопки должна отражать ТЕКУЩЕЕ значение, а не снимок на момент
+// сборки меню: меню строится один раз, а устройства переключаются постоянно.
+// Меняем значение в обход бота (как если бы выключатель щёлкнули рукой) и
+// перечитываем ту же кнопку, ничего не пересобирая.
+// Устройство берём с НЕСКОЛЬКИМИ действиями: у односоставного экран со списком
+// пропущен, и состояние показывать негде — первая версия проверки целилась
+// именно туда и падала на исправном коде.
+const multiItem = diag.inventory.actions.find((a) => a.kind === 'switch'
+    && diag.inventory.actions.filter((b) => b.device === a.device && b.room === a.room).length > 1);
+must('в фикстуре есть устройство с несколькими действиями', !!multiItem);
+if (multiItem) {
+    const listSet = 'pd' + multiItem.aId;
+    const before = JSON.stringify(labelsOf(listSet));
+    Hub.setCharacteristicValue(multiItem.aId, multiItem.cId,
+        !Hub.getCharacteristicValue(multiItem.aId, multiItem.cId));
+    const after = JSON.stringify(labelsOf(listSet));
+    say('подпись до переключения: ' + before);
+    say('подпись после:          ' + after);
+    must('подпись кнопки отражает текущее значение, а не снимок', before !== after);
+}
 must('/refresh подхватывает переименование из хаба',
     renamed.after.includes('Температура гостиная НОВОЕ ИМЯ'));
 must('стенд не спотыкался', trace.errors.length === 0);
