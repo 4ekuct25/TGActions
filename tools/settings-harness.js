@@ -432,6 +432,24 @@ must('набор устройства адресуется по aId',
     setNames.some((n) => n === 'fd39' || n === 'pd39'));
 must('набор действия адресуется по aId и cId',
     setNames.some((n) => n === 'fa39_15' || n === 'pa39_15'));
+// Переименование в хабе и /refresh. Заглушка Hub читает имя из объекта
+// фикстуры через замыкание, поэтому правка объекта = переименование в хабе.
+// Без этой проверки механизм /refresh остаётся непроверенным, а он —
+// единственный способ подхватить переименование без перезагрузки сценария.
+const renamed = (() => {
+    const room = fixture.rooms.find((r) => r.name === 'Гостиная');
+    const acc = room.accessories.find((a) => a.aId === 8);
+    const svc = acc.services.find((s) => s.sId === 13);
+    const before = svc.name;
+    svc.name = 'Температура гостиная НОВОЕ ИМЯ';
+    cmd('refresh', PRIVATE_CHAT, OWNER);
+    cmd('status', PRIVATE_CHAT, OWNER);
+    const after = trace.sent[trace.sent.length - 1].text;
+    svc.name = before;
+    return { before, after };
+})();
+must('/refresh подхватывает переименование из хаба',
+    renamed.after.includes('Температура гостиная НОВОЕ ИМЯ'));
 must('стенд не спотыкался', trace.errors.length === 0);
 say('');
 
