@@ -394,6 +394,20 @@ step('новый чат добавлен в настройки на лету', f
     flush(1);
 });
 
+// Появился более новый экземпляр движка — этот обязан прекратить опрос сам,
+// иначе несколько циклов дерутся за getUpdates одного бота (409) и сообщение
+// может перехватить призрак со старым снимком настроек.
+step('загружен новый экземпляр движка', function () {
+    const before = trace.http.length;
+    sandbox.global.TGActionsEpoch = 999;
+    flush(1);
+    trace.logs.push('--- HTTP-запросов после смены поколения: '
+        + (trace.http.length - before) + ' ---');
+    flush(1);
+    trace.logs.push('--- таймеров в очереди: ' + pending.length + ' ---');
+    sandbox.global.TGActionsEpoch = 1;
+});
+
 step('stopPolling', function () {
     TG.stopPolling('botName1');
 });

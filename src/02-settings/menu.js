@@ -12,11 +12,12 @@
  * Имена наборов короткие намеренно: они уезжают в callback_data, у которого
  * лимит 64 байта, а кириллица там стоит два байта на символ.
  *
- * Зависимости: access, discovery.
+ * Зависимости: access, discovery, visibility.
  */
 function TGActionsMenu(ns) {
     var access = ns.access;
     var discovery = ns.discovery;
+    var sortNames = ns.visibility.sortNames;
 
     var BACK = '‹ Назад';
 
@@ -228,7 +229,23 @@ function TGActionsMenu(ns) {
             }
             map[item.device].push(item);
         }
-        return { map: map, order: order };
+
+        // Порядок обхода хаба произволен, поэтому сортируем и устройства, и
+        // действия внутри устройства. Раньше сортировались только комнаты и
+        // датчики в /status, а список устройств выезжал как придётся.
+        for (var name in map) {
+            if (map.hasOwnProperty(name)) {
+                map[name].sort(byTitle);
+            }
+        }
+        return { map: map, order: sortNames(order) };
+    }
+
+    function byTitle(a, b) {
+        if (a.title === b.title) {
+            return 0;
+        }
+        return a.title < b.title ? -1 : 1;
     }
 
     return {

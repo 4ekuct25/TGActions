@@ -18,6 +18,7 @@ function TGActionsPolling(ns) {
     var _error409Streak = ns.state.error409Streak;
     var registerBotCommands = ns.commands.registerBotCommands;
     var processUpdates = ns.updates.processUpdates;
+    var isCurrentEpoch = ns.state.isCurrentEpoch;
 
     /**
      * Запускает long‑polling. Вызывайте в начале работы скрипта.
@@ -80,6 +81,13 @@ function TGActionsPolling(ns) {
      */
     function pollOnce(botName) {
         if (!pollingActive[botName]) {
+            return;
+        }
+        // Загружен более новый экземпляр движка — этот доживает свой век
+        // как призрак. Молча уходим, чтобы не воевать за getUpdates.
+        if (!isCurrentEpoch()) {
+            pollingActive[botName] = false;
+            _logger.warn('pollOnce {} – остановлен: загружен новый экземпляр движка', botName);
             return;
         }
         if (inFlight[botName]) {

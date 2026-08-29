@@ -32,6 +32,7 @@ const KID = '222000222';
 const STRANGER = '999000999';
 
 const trace = { menu: [], sent: [], writes: [], errors: [] };
+const BACK_LABEL = '\u2039 Назад';
 
 // ─────────────────────────────  Заглушка хаба  ──────────────────────────────
 const fixture = JSON.parse(
@@ -448,6 +449,25 @@ const renamed = (() => {
     svc.name = before;
     return { before, after };
 })();
+// Порядок внутри меню: обход хаба произволен, поэтому и устройства в комнате,
+// и действия в устройстве должны сортироваться. Проверяем ТОЛЬКО навигационные
+// наборы: в наборах значений («Выкл», «Тепло», «Холод») порядок осмысленный и
+// сортировать их нельзя — первая версия проверки этого не различала и падала.
+//   <профиль>r<хеш> — кнопки = имена устройств комнаты
+//   <профиль>d<aId> — кнопки = названия действий устройства
+function sortedAscending(list) {
+    for (let i = 1; i < list.length; i++) {
+        if (list[i - 1] > list[i]) return false;
+    }
+    return true;
+}
+const navSets = Object.keys(settings.buttonSets).filter((n) => /^[fp][rd]/.test(n));
+const unsorted = navSets.filter((n) => {
+    const labels = labelsOf(n).map((row) => row[0]).filter((s) => s !== BACK_LABEL);
+    return !sortedAscending(labels);
+});
+must('устройства и действия в меню отсортированы (наборов: ' + navSets.length + ')',
+    unsorted.length === 0);
 must('/refresh подхватывает переименование из хаба',
     renamed.after.includes('Температура гостиная НОВОЕ ИМЯ'));
 must('стенд не спотыкался', trace.errors.length === 0);

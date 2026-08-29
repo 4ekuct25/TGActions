@@ -8,6 +8,34 @@
  * Зависимостей нет (читает global.TGActionsSettings.chats при создании).
  */
 function TGActionsState() {
+    /**
+     * Метка поколения движка.
+     *
+     * Таймеры переживают переустановку сценария: удалили сценарий движка и
+     * залили новый — прежний экземпляр остаётся жить со своим циклом опроса.
+     * В планировщике хаба это видно как задачи давно удалённых сценариев.
+     * Несколько циклов дёргают getUpdates одного бота, Telegram допускает
+     * только один — отсюда 409, самопроизвольные остановки и перехват
+     * сообщения призраком со старым снимком настроек.
+     *
+     * Каждая загрузка увеличивает счётчик в global. Экземпляр, увидевший
+     * чужое поколение, прекращает опрос сам.
+     *
+     * Если запись в global не пройдёт, счётчик останется undefined и все
+     * экземпляры получат поколение 1 — станет как раньше, но не хуже.
+     */
+    var epoch;
+    try {
+        global.TGActionsEpoch = (global.TGActionsEpoch || 0) + 1;
+        epoch = global.TGActionsEpoch;
+    } catch (e) {
+        epoch = 1;
+    }
+
+    function isCurrentEpoch() {
+        return global.TGActionsEpoch === epoch;
+    }
+
     var pollOffsets = {};   // last processed update_id + 1 per bot
     var pollingActive = {}; // boolean flags per bot
     var pollTimers = {};    // Timer per bot
@@ -52,6 +80,8 @@ function TGActionsState() {
         activeReplyMenus: _activeReplyMenus,
         webhookCleared: _webhookCleared,
         error409Streak: _error409Streak,
-        isAllowedChat: _isAllowedChat
+        isAllowedChat: _isAllowedChat,
+        isCurrentEpoch: isCurrentEpoch,
+        epoch: epoch
     };
 }

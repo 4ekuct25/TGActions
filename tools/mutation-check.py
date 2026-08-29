@@ -42,6 +42,10 @@ SETTINGS_MUTATIONS = [
      "комнаты не сортируются по алфавиту"),
     ("commands.js", "var list = byRoom[room].slice().sort(byTitle);",
      "var list = byRoom[room];", "датчики в /status не сортируются"),
+    ("menu.js", "return { map: map, order: sortNames(order) };",
+     "return { map: map, order: order };", "устройства в комнате не сортируются"),
+    ("menu.js", "map[name].sort(byTitle);", "map[name];",
+     "действия внутри устройства не сортируются"),
     ("discovery.js", "if (override.hide) {", "if (false) {",
      "точечное скрытие устройства не работает"),
     ("discovery.js", "return Hub.getCharacteristicValue(item.aId, item.cId);",
@@ -60,6 +64,9 @@ SETTINGS_MUTATIONS = [
 # зон был виден, а не растворялся в «всё зелено».
 MUTATIONS = [
     ("polling.js", "backoff > 60000", "backoff > 70000"),
+    # Без проверки поколения прежние экземпляры движка продолжают опрос и
+    # дерутся за getUpdates одного бота.
+    ("polling.js", "if (!isCurrentEpoch()) {", "if (false) {"),
     # getBot должен быть ВНУТРИ try: снаружи его ошибка обрывала цепочку опроса
     # навсегда, и бот молча замолкал.
     ("polling.js", "            bot = getBot(botName);",
