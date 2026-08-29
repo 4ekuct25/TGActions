@@ -140,6 +140,10 @@ const getUpdatesScript = [
 ];
 let getUpdatesIdx = 0;
 let messageIdSeq = 1000;
+// Одноразовый ответ на следующий getUpdates. Нужен, чтобы вставить сообщение
+// в середину прогона: очередь после исчерпания повторяет последний элемент,
+// и splice в неё зациклил бы вставленный апдейт.
+let onceUpdate = null;
 
 function updatesBatch() {
     return JSON.stringify({
@@ -187,6 +191,11 @@ function updatesBatch() {
 
 function respond(method, url) {
     if (url.indexOf('/getUpdates') !== -1) {
+        if (onceUpdate) {
+            const one = onceUpdate;
+            onceUpdate = null;
+            return one;
+        }
         const r = getUpdatesScript[Math.min(getUpdatesIdx, getUpdatesScript.length - 1)];
         getUpdatesIdx += 1;
         return r;
@@ -341,6 +350,20 @@ step('настройки исчезли на один опрос', function () {
         + (trace.timers.length - timersBefore > 0 ? 'да' : 'НЕТ, цепочка оборвалась') + ' ---');
 });
 step('опрос продолжается после сбоя', function () { flush(1); });
+
+// Белый список чатов меняется на лету — так бывает при переимпорте настроек
+// в хабе. Движок обязан подхватить новый чат без перезапуска: раньше список
+// кэшировался при инициализации, и переимпорт настроек оставлял его старым.
+step('новый чат добавлен в настройки на лету', function () {
+    settings.chats.late = '777';
+    onceUpdate = {
+        status: 200,
+        body: JSON.stringify({ ok: true, result: [
+            { update_id: 200, message: { chat: { id: 777 }, from: SENDER, text: '/status' } }
+        ] })
+    };
+    flush(1);
+});
 
 step('stopPolling', function () {
     TG.stopPolling('botName1');

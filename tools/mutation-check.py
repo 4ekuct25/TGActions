@@ -72,10 +72,12 @@ MUTATIONS = [
         "сработал до возврата предыдущего long-poll. В стенде HTTP синхронный и "
         "поток один, через публичный API ветка недостижима",
     ),
+    # Белый список чатов должен читаться в момент проверки, а не кэшироваться:
+    # иначе переимпорт настроек оставляет его устаревшим и бот молчит.
     (
         "state.js",
-        "ids[String(global.TGActionsSettings.chats[k])] = true;",
-        "ids[String(k)] = true;",
+        "if (settings.chats.hasOwnProperty(k) && String(settings.chats[k]) === needle) {",
+        "if (settings.chats.hasOwnProperty(k) && String(k) === needle) {",
     ),
     ("handlers.js", "if (btn && btn.text === text) {", "if (btn) {"),
     # Групповые команды: без отсечения @botname семейный чат не работает вовсе.

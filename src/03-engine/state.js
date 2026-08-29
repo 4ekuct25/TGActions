@@ -18,22 +18,29 @@ function TGActionsState() {
     var _error409Streak = {};
 
     /**
-     * Множество разрешённых chat_id, собранное из объекта chats. Все входящие
-     * сообщения из других чатов будут игнорироваться.
+     * Разрешён ли chat_id. Список читается из настроек В МОМЕНТ ПРОВЕРКИ.
+     *
+     * Раньше он собирался один раз при создании модуля и кэшировался. Движок и
+     * настройки — разные сценарии хаба, и порядок их загрузки не определён:
+     * стоило переимпортировать настройки (или загрузиться раньше них), как в
+     * кэше навсегда оставался старый список. Симптом коварный — бот отвечает на
+     * команды с anyChat и молчит на все остальные, будто «часть команд сломана».
+     *
+     * Пересборка на каждое сообщение стоит обхода нескольких записей объекта —
+     * это ничто на фоне HTTP-запроса, которым сообщение и было получено.
      */
-    var _allowedChatIds = (function () {
-        var ids = {};
-        for (var k in global.TGActionsSettings.chats) {
-            if (global.TGActionsSettings.chats.hasOwnProperty(k)) {
-                ids[String(global.TGActionsSettings.chats[k])] = true;
+    function _isAllowedChat(chatId) {
+        var settings = global.TGActionsSettings;
+        if (!settings || !settings.chats) {
+            return false;
+        }
+        var needle = String(chatId);
+        for (var k in settings.chats) {
+            if (settings.chats.hasOwnProperty(k) && String(settings.chats[k]) === needle) {
+                return true;
             }
         }
-        return ids;
-    }());
-
-    /** Проверка, разрешён ли chat_id */
-    function _isAllowedChat(chatId) {
-        return _allowedChatIds.hasOwnProperty(String(chatId));
+        return false;
     }
 
     return {
