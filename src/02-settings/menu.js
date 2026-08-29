@@ -178,6 +178,19 @@ function TGActionsMenu(ns) {
                 for (var d = 0; d < devices.order.length; d++) {
                     var deviceName = devices.order[d];
                     var items = devices.map[deviceName];
+                    index.devices++;
+
+                    // У устройства одно действие — промежуточный экран со
+                    // списком из одной кнопки не нужен: из комнаты ведём сразу
+                    // к значениям, а «Назад» оттуда — обратно в комнату.
+                    if (items.length === 1) {
+                        var only = actionSet(profile, items[0]);
+                        buttonSets[only] = actionButtons(items[0], rSet);
+                        deviceRows.push([navButton(only, deviceName)]);
+                        index.actions++;
+                        continue;
+                    }
+
                     var dSet = deviceSet(profile, items[0]);
                     var actionRows = [];
 
@@ -190,7 +203,6 @@ function TGActionsMenu(ns) {
                     actionRows.push([navButton(rSet, BACK)]);
                     buttonSets[dSet] = actionRows;
                     deviceRows.push([navButton(dSet, deviceName)]);
-                    index.devices++;
                 }
 
                 deviceRows.push([navButton(homeSet(profile), BACK)]);

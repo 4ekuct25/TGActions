@@ -468,6 +468,40 @@ const unsorted = navSets.filter((n) => {
 });
 must('устройства и действия в меню отсортированы (наборов: ' + navSets.length + ')',
     unsorted.length === 0);
+// Промежуточный экран из одной кнопки — лишний шаг. Для устройства с одним
+// действием из комнаты ведём сразу к значениям. Проверяем двумя способами:
+// структурно (не осталось наборов устройства с единственным действием) и
+// поведением (нажатие такого устройства открывает экран значений).
+const redundant = Object.keys(settings.buttonSets)
+    .filter((n) => /^[fp]d/.test(n))
+    .filter((n) => labelsOf(n).map((r) => r[0]).filter((s) => s !== BACK_LABEL).length < 2);
+must('нет экранов устройства с единственным действием', redundant.length === 0);
+
+const single = diag.inventory.actions.filter((a) => {
+    const same = diag.inventory.actions.filter(
+        (b) => b.room === a.room && b.device === a.device);
+    return same.length === 1;
+})[0];
+must('в фикстуре есть устройство с одним действием', !!single);
+if (single) {
+    const rows = labelsOf('p' + 'r' + (() => {
+        let h = 5381;
+        for (let i = 0; i < single.room.length; i++) h = ((h * 33) ^ single.room.charCodeAt(i)) >>> 0;
+        return h.toString(36);
+    })());
+    const idx = rows.findIndex((r) => r[0] === single.device);
+    const before = trace.sent.length;
+    click('p' + 'r' + (() => {
+        let h = 5381;
+        for (let i = 0; i < single.room.length; i++) h = ((h * 33) ^ single.room.charCodeAt(i)) >>> 0;
+        return h.toString(36);
+    })(), idx, 0, PRIVATE_CHAT, OWNER);
+    const opened = trace.sent[trace.sent.length - 1].set;
+    const labels = JSON.stringify(labelsOf(opened));
+    say('устройство «' + single.device + '» с одним действием открывает: ' + labels);
+    must('одно действие открывается сразу экраном значений',
+        trace.sent.length > before && /Включить|\d/.test(labels));
+}
 must('/refresh подхватывает переименование из хаба',
     renamed.after.includes('Температура гостиная НОВОЕ ИМЯ'));
 must('стенд не спотыкался', trace.errors.length === 0);

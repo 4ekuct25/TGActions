@@ -46,6 +46,8 @@ SETTINGS_MUTATIONS = [
      "return { map: map, order: order };", "устройства в комнате не сортируются"),
     ("menu.js", "map[name].sort(byTitle);", "map[name];",
      "действия внутри устройства не сортируются"),
+    ("menu.js", "if (items.length === 1) {", "if (false) {",
+     "лишний экран из одной кнопки не пропускается"),
     ("discovery.js", "if (override.hide) {", "if (false) {",
      "точечное скрытие устройства не работает"),
     ("discovery.js", "return Hub.getCharacteristicValue(item.aId, item.cId);",
