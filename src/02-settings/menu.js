@@ -69,6 +69,20 @@ function TGActionsMenu(ns) {
             cq.botName, String(cq.message.chat.id), setName, text, { notify: false });
     }
 
+    /**
+     * Человекочитаемый путь до действия: комната · устройство · действие.
+     *
+     * Устройство добавляется, только если его имя отличается от названия
+     * действия: у многих устройств сервис назван так же, и вышло бы
+     * «Лампа над столом левая · Лампа над столом левая».
+     */
+    function itemPath(item) {
+        if (item.title === item.device) {
+            return item.room + ' · ' + item.title;
+        }
+        return item.room + ' · ' + item.device + ' · ' + item.title;
+    }
+
     function valueLabel(item, value) {
         if (item.labels) {
             var byLabel = item.labels[String(value)];
@@ -129,12 +143,12 @@ function TGActionsMenu(ns) {
                 try {
                     discovery.writeValue(item, value);
                 } catch (e) {
-                    send(cq, '⚠️ Не удалось: ' + e);
+                    send(cq, '⚠️ ' + itemPath(item) + ' — не удалось: ' + e);
                     return;
                 }
                 // Подтверждаем намерение, а не результат: значение в хабе
                 // доезжает асинхронно, и немедленное чтение врёт.
-                send(cq, '✅ ' + item.room + ' · ' + item.title + ' → ' + label);
+                send(cq, '✅ ' + itemPath(item) + ' → ' + label);
             }
         };
     }

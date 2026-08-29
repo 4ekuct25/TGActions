@@ -502,6 +502,26 @@ if (single) {
     must('одно действие открывается сразу экраном значений',
         trace.sent.length > before && /Включить|\d/.test(labels));
 }
+// Подтверждение действия должно называть устройство — по нему человек узнаёт,
+// что именно щёлкнуло. Но если сервис назван так же, как устройство, дублировать
+// имя не нужно: «Лампа над столом левая · Лампа над столом левая» читается плохо.
+function confirmationFor(item) {
+    const set = 'pa' + item.aId + '_' + item.cId;
+    if (!settings.buttonSets[set]) return null;
+    click(set, 0, 0, PRIVATE_CHAT, OWNER);
+    return trace.sent[trace.sent.length - 1].text;
+}
+const differing = diag.inventory.actions.find((a) => a.title !== a.device && a.kind === 'switch');
+const sameName = diag.inventory.actions.find((a) => a.title === a.device && a.kind === 'switch');
+const textDiffer = differing ? confirmationFor(differing) : null;
+const textSame = sameName ? confirmationFor(sameName) : null;
+say('подтверждение (имена разные): ' + textDiffer);
+say('подтверждение (имена совпадают): ' + textSame);
+must('в подтверждении есть устройство, когда оно отличается от действия',
+    !!textDiffer && textDiffer.indexOf(differing.device) !== -1
+    && textDiffer.indexOf(differing.title) !== -1);
+must('имя не дублируется, когда устройство и действие названы одинаково',
+    !!textSame && textSame.split(' · ').length === 2);
 must('/refresh подхватывает переименование из хаба',
     renamed.after.includes('Температура гостиная НОВОЕ ИМЯ'));
 must('стенд не спотыкался', trace.errors.length === 0);
