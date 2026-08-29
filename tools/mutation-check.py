@@ -124,10 +124,26 @@ MUTATIONS = [
     ("handlers.js", "if (!_isAllowedChat(msg.chat.id) && !(cmd && cmd.anyChat)) {",
      "if (!_isAllowedChat(msg.chat.id)) {"),
     ("updates.js", "pollOffsets[botName] = maxId + 1;", "pollOffsets[botName] = maxId;"),
+    # Формат строки журнала должен совпадать с прежним (сценарий Logger):
+    # «Info: TGActions#версия, текст». Иначе поедет привычный вид журнала.
     (
         "logger.js",
-        "impl = global.LoggerFactory.create('TGActions' + ver);",
-        "impl = global.LoggerFactory.create('TGActions');",
+        "return level + ': ' + name + ', ' + render(args);",
+        "return render(args);",
+    ),
+    (
+        "logger.js",
+        "name = 'TGActions' + ver;",
+        "name = 'TGActions';",
+    ),
+    # Подстановка {} по правилам прежнего Logger.
+    (
+        "logger.js",
+        "out += (i < rest.length) ? rest[i] : '{}';",
+        "out += rest[i];",
+        "ветка «плейсхолдеров {} больше, чем аргументов». Все вызовы логгера "
+        "в движке сбалансированы, поэтому через публичный API она недостижима; "
+        "оставлена как защита при будущих правках форматных строк",
     ),
     ("messaging.js", "keyboard: rows, resize_keyboard: true", "keyboard: rows"),
     ("bot-meta.js", "CONSTANTS.SET_DESCRIPTION_ENDPOINT", "'/setMyDescriptionX'"),

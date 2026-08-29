@@ -97,18 +97,43 @@ function mark(name) {
 }
 
 // ─────────────────────────────────  Логгер  ────────────────────────────────
+// Обе реализации — прежняя (сценарий Logger через global.LoggerFactory) и
+// нынешняя (прямой вызов log.*) — пишут в трассу ОДИНАКОВО отформатированную
+// строку. Только так A/B доказывает, что вывод в журнале хаба не изменился.
+// Раньше заглушка форматировала по-своему и с хабом не совпадала вовсе.
+function record(method, text) {
+    trace.logs.push('log.' + method + ' ' + text);
+}
+
+const log = {
+    info: (s) => record('info', String(s)),
+    warn: (s) => record('warn', String(s)),
+    error: (s) => record('error', String(s))
+};
+
+// Точная копия форматирования из сценария Logger — эталон, с которым
+// сверяется новая реализация внутри движка.
 function makeLogger(name) {
-    function log(level) {
-        return function (msg) {
-            const args = Array.prototype.slice.call(arguments, 1);
-            let i = 0;
-            const rendered = String(msg).replace(/\{\}/g, function () {
-                return i < args.length ? render(args[i++]) : '{}';
-            });
-            trace.logs.push(level + ' [' + name + '] ' + rendered);
-        };
-    }
-    return { info: log('info'), warn: log('warn'), error: log('error'), debug: log('debug') };
+    const fmt = (level, args) => {
+        const all = Array.prototype.slice.call(args);
+        if (all.length === 0) return level + ': ' + name + ', ';
+        const format = String(all[0]);
+        const rest = all.slice(1);
+        if (rest.length === 0) return level + ': ' + name + ', ' + format;
+        const parts = format.split('{}');
+        let out = '';
+        for (let i = 0; i < parts.length - 1; i++) {
+            out += parts[i];
+            out += (i < rest.length) ? rest[i] : '{}';
+        }
+        return level + ': ' + name + ', ' + out + parts[parts.length - 1];
+    };
+    return {
+        info: function () { record('info', fmt('Info', arguments)); },
+        warn: function () { record('warn', fmt('Warn', arguments)); },
+        error: function () { record('error', fmt('Error', arguments)); },
+        debug: function () {}
+    };
 }
 
 function render(v) {
@@ -268,6 +293,10 @@ class FixedDate {
 
 // ──────────────────────────────  Запуск движка  ────────────────────────────
 const sandbox = {
+    // log — глобальный объект хаба, в него пишет нынешний движок.
+    // LoggerFactory оставлен, чтобы прежняя версия движка тоже запускалась
+    // и A/B было с чем сравнивать.
+    log: log,
     global: { TGActionsSettings: settings, LoggerFactory: { create: makeLogger } },
     HttpClient: HttpClient,
     setTimeout: setTimeoutStub,

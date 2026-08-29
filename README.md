@@ -21,9 +21,15 @@
 Установить сценарии (порядок установки и исполнения сценариев важен)
 **Глобальные сценарии**
 
-* Logger
 * Telegram for Sprut. Part 1. ReadMe and Settings
 * Telegram for Sprut. Part 2. Engine
+
+> Сценарий **Logger** больше не нужен. Движок пишет в `log` — глобальный объект
+> хаба — напрямую, формат строки прежний (`Info: TGActions#версия, текст`).
+> Файл `1. Logger.json` остался в репозитории как артефакт исходного модуля,
+> но в хаб не устанавливается: это был лишний сценарий и лишняя точка отказа —
+> порядок загрузки глобальных сценариев хаб не гарантирует, и без Logger движок
+> падал на инициализации.
 
 **Блочный сценарий**
 * Telegram for Sprut. Part 3. Auto start bot
@@ -609,7 +615,7 @@ global.TGActions.sendInteractiveMessage(
 
 | Файл в `src/` | Сценарий |
 |---|---|
-| `01-logger.js` | Logger |
+| `01-logger.js` | Logger — **не устанавливается**, движку не нужен (см. п. 1) |
 | `02-settings/` | Telegram for Sprut. Part 1. ReadMe and Settings (модули, см. 15.2) |
 | `03-engine/` | Telegram for Sprut. Part 2. Engine (разложен на модули, см. 15.1) |
 | `04-autostart.blocks.json` + `04-autostart.code.1.js` | Telegram for Sprut. Part 3. Auto start bot (блочный: граф блоков отдельно, код блока отдельно) |
