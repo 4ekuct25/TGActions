@@ -638,7 +638,7 @@ global.TGActions.sendInteractiveMessage(
 | Модуль | Отвечает за | Зависит от |
 |---|---|---|
 | `constants.js` | версия, константы Telegram Bot API | — |
-| `logger.js` | обёртка над `global.LoggerFactory` | — |
+| `logger.js` | запись в `log` — глобальный объект хаба (см. п. 1) | — |
 | `state.js` | контейнеры состояния опроса, whitelist чатов | — |
 | `helpers.js` | `getBot`, `getChat`, сборка URL, таймеры | logger, constants |
 | `messaging.js` | отправка/удаление сообщений, клавиатуры | logger, constants, helpers, state |
