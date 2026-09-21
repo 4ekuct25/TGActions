@@ -1,0 +1,18 @@
+{
+  "projectId": "P-555f0578-9381-4574-b9e1-f0a07e577f47",
+  "projectTitle": "TGActions",
+  "columns": {
+    "todo": "KS-P-555f0578-9381-4574-b9e1-f0a07e577f47-TODO",
+    "wip": "KS-P-555f0578-9381-4574-b9e1-f0a07e577f47-IN-PROGRESS",
+    "done": "KS-P-555f0578-9381-4574-b9e1-f0a07e577f47-DONE",
+    "review": "KS-627c35af-721e-4fd4-bae5-510847c47e2b",
+    "blocked": "KS-64f8d4b4-f61e-4d26-a7c4-b0e7c7a349ad"
+  },
+  "columnNames": {
+    "todo": "К работе",
+    "wip": "В работе",
+    "review": "На проверке",
+    "done": "Готово",
+    "blocked": "Заблокировано"
+  }
+}
